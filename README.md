@@ -22,6 +22,7 @@
 | 資料庫存取 | Knex（query builder + migration）+ `mysql2` |
 | 資料庫 | MariaDB 11.4 |
 | 認證 | `express-session`（Session 存在資料庫）、CSRF 防護（Synchronizer Token）、Argon2 密碼雜湊、登入速率限制 |
+| 開發環境 | Docker Compose（前端、API、資料庫各一個容器，一個指令啟動） |
 | 部署 | Hostinger VPS + Docker Compose + Caddy（保留改部署到 Hostinger Cloud Startup 的彈性） |
 
 選型理由見 [docs/architecture.md](docs/architecture.md)「技術選型」。
@@ -38,6 +39,12 @@
 
 ## 本機開發
 
-啟動方式（`docker compose up`）將於專案初始化完成後補上。
+本機開發環境全部用 Docker Compose 管理，電腦上只需要安裝 [Docker Desktop](https://www.docker.com/products/docker-desktop/)，不用另外安裝 Node.js 或 MariaDB。
 
-本機連接埠：`3020`（前端）、`3021`（API）、`3307`（MariaDB）。
+| 服務 | 內容 | 本機連接埠 |
+| --- | --- | --- |
+| `frontend` | Vue 3 + Vite 開發伺服器 | `3020`（瀏覽器開這個） |
+| `api` | Node.js + Express | `3021` |
+| `db` | MariaDB 11.4 | `3307`（給 DBeaver 等資料庫工具連線） |
+
+詳細的啟動步驟（建立 `.env`、`docker compose up`、執行 migration）將於專案初始化完成後補上。
