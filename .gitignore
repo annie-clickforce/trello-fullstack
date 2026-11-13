@@ -21,3 +21,6 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# AI 工具設定（只留在本機，比照 todo-fullstack）
+CLAUDE.md
