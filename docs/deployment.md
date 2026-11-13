@@ -15,6 +15,7 @@
 - **設定全部來自環境變數**：資料庫連線用 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`，監聽的 port 讀 `PORT`；程式碼裡不寫死任何主機（例如 Docker 的 `db`）、密碼。程式不讀 `.env` 檔，本機由 Docker Compose 帶入，正式環境在 hPanel 的 Web App 設定環境變數。
 - **正式環境才需要的設定也用環境變數開關**：Cookie 的 `secure` 由 `COOKIE_SECURE=true` 打開，Express 的 `trust proxy` 由 `TRUST_PROXY=1` 設定（API 前面有幾層反向代理就填幾），Express 提供前端檔案由 `FRONTEND_DIST` 打開。本機開發不設定（預設關閉）。錯誤訊息一律不回傳細節，本機與正式環境相同。
 - **程式碼不依賴 Docker**：`npm ci && npm start` 在任何裝了 Node.js 24 的地方都要能跑。
+- **不使用 top-level await**：Hostinger 的 Web App 由 LiteSpeed（`lsnode.js`）用 `require()` 載入 entry file。Node.js 24 可以 `require()` ESM，但整個 import 鏈裡只要有一個模組在最外層 `await`，就會啟動失敗（`ERR_REQUIRE_ASYNC_MODULE`），網站回 LiteSpeed 的 `503`。需要非同步初始化的值，改成第一次用到時才產生並快取（例如 `routes/auth.js` 的 dummy hash）。本機可以用 `node -e "require('./src/server.js')"` 模擬。
 - **migration 是獨立指令**（`npm run migrate`），不在 API 啟動時自動執行。
 - **log 一律輸出到 stdout／stderr**，由 Hostinger 的 Web App 收集。
 - **健康檢查**（`GET /api/v1/health`）用來確認 API 與資料庫正常。

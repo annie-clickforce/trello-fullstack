@@ -15,8 +15,17 @@ const router = Router();
 // 回傳給前端的使用者欄位（絕對不包含 password_hash）
 const PUBLIC_USER_FIELDS = ['id', 'name', 'email', 'created_at'];
 
-// 帳號不存在時也做一次密碼比對，讓回應時間跟「密碼錯誤」差不多，避免被猜出哪些 email 有註冊
-const DUMMY_HASH = await argon2.hash(crypto.randomBytes(16).toString('hex'));
+// 帳號不存在時也做一次密碼比對，讓回應時間跟「密碼錯誤」差不多，避免被猜出哪些 email 有註冊。
+// 第一次用到時才產生並快取起來；不用 top-level await，因為 Hostinger（LiteSpeed）用 require() 載入程式，
+// require() 遇到有 top-level await 的 ESM 會直接失敗（ERR_REQUIRE_ASYNC_MODULE）。
+let dummyHashPromise;
+function getDummyHash() {
+  dummyHashPromise ??= argon2.hash(crypto.randomBytes(16).toString('hex')).catch((error) => {
+    dummyHashPromise = undefined; // 失敗就不要快取，下次重試
+    throw error;
+  });
+  return dummyHashPromise;
+}
 
 // 每個 IP 每分鐘最多 5 次；註冊與登入各自計算
 function authRateLimit() {
@@ -76,7 +85,7 @@ router.post('/login', authRateLimit(), async (req, res) => {
   const user = await db('users').where({ email: input.email }).first('id', 'password_hash');
   const passwordOk = user
     ? await argon2.verify(user.password_hash, input.password)
-    : (await argon2.verify(DUMMY_HASH, input.password), false);
+    : (await argon2.verify(await getDummyHash(), input.password), false);
   if (!passwordOk) throw new HttpError(401, 'Invalid email or password');
 
   // 更換 Session ID，避免 Session 固定攻擊；新的 Session 也換一組新的 CSRF token
