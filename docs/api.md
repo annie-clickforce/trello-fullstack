@@ -191,7 +191,8 @@ email 重複的檢查除了先查一次，還要處理資料庫唯一約束的�
 
 - 只傳 `title`／`description`：修改內容（前端在卡片上直接編輯後送出）。
 - 只傳 `position`：在原欄位內調整順序。
-- 傳 `status`（可同時傳 `position`）：移到另一欄；沒傳 `position` 時放在目標欄最後面。`status` 只能是 `todo`、`doing`、`done`。
+- 傳 `status`（可同時傳 `position`）：移到另一欄；沒傳 `position` 時放在目標欄最後面。`status` 只能是 `todo`、`doing`、`done`。如果傳的 `status` 就是卡片目前所在的欄，視為同一欄內移動；這時沒傳 `position` 就不移動。
+- `position` 必須是整數；負數會夾成 `0`，超過最後一個位置會夾成最後一個位置。
 - 移動在單一交易內完成，回傳更新後的卡片。
 
 ## 常用狀態碼

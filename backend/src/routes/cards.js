@@ -4,11 +4,11 @@ import { Router } from 'express';
 import db from '../db.js';
 import { HttpError } from '../errors.js';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { createCardSchema, updateCardSchema } from '../schemas/cards.js';
+import { createCardSchema, updateCardSchema, STATUSES } from '../schemas/cards.js';
+import { lockUser, makeRoomAtTop, moveCard, closeGap } from '../ordering.js';
 
 const router = Router();
 
-const STATUSES = ['todo', 'doing', 'done'];
 // 回傳給前端的卡片欄位（不含 user_id）
 const CARD_FIELDS = ['id', 'title', 'description', 'status', 'position', 'created_at', 'updated_at'];
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -26,11 +26,6 @@ async function findOwnedCard(conn, userId, id) {
   const card = await conn('cards').select(CARD_FIELDS).where({ id, user_id: userId }).first();
   if (!card) throw new HttpError(404, 'Not found');
   return card;
-}
-
-// 鎖定目前使用者那一列，讓同一個使用者的排序操作一個一個排隊執行
-function lockUser(trx, userId) {
-  return trx('users').where({ id: userId }).forUpdate().first('id');
 }
 
 router.get('/', async (req, res) => {
@@ -51,9 +46,8 @@ router.post('/', async (req, res) => {
 
   const card = await db.transaction(async (trx) => {
     await lockUser(trx, userId);
-    // 新卡片放在待辦最上面：先把原本的待辦卡片往後挪一格。
-    // 從最大的開始更新，每一列移動時目標位置都已經空出來，不會撞到唯一約束
-    await trx('cards').where({ user_id: userId, status: 'todo' }).orderBy('position', 'desc').increment('position', 1);
+    // 新卡片放在待辦最上面：先把原本的待辦卡片往後挪一格
+    await makeRoomAtTop(trx, userId);
     await trx('cards').insert({
       id,
       user_id: userId,
@@ -70,18 +64,37 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   const input = updateCardSchema.parse(req.body ?? {});
-  const fields = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
-  if (Object.keys(fields).length === 0) {
+  const { title, description, status, position } = input;
+  const content = Object.fromEntries(Object.entries({ title, description }).filter(([, v]) => v !== undefined));
+  const moving = status !== undefined || position !== undefined;
+  if (Object.keys(content).length === 0 && !moving) {
     throw new HttpError(422, 'At least one field is required');
   }
 
   const userId = req.session.userId;
-  await findOwnedCard(db, userId, req.params.id);
-  await db('cards')
-    .where({ id: req.params.id, user_id: userId })
-    .update({ ...fields, updated_at: db.fn.now(3) });
+  const card = await db.transaction(async (trx) => {
+    await lockUser(trx, userId);
+    // 鎖定之後才讀卡片，拿到的 status／position 才是最新的
+    const current = await findOwnedCard(trx, userId, req.params.id);
+    if (moving) await moveCard(trx, userId, current, { status, position });
+    await trx('cards')
+      .where({ id: current.id })
+      .update({ ...content, updated_at: trx.fn.now(3) });
+    return findOwnedCard(trx, userId, current.id);
+  });
 
-  res.json(await findOwnedCard(db, userId, req.params.id));
+  res.json(card);
+});
+
+router.delete('/:id', async (req, res) => {
+  const userId = req.session.userId;
+  await db.transaction(async (trx) => {
+    await lockUser(trx, userId);
+    const card = await findOwnedCard(trx, userId, req.params.id);
+    await trx('cards').where({ id: card.id }).del();
+    await closeGap(trx, userId, card);
+  });
+  res.status(204).end();
 });
 
 export default router;

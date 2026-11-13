@@ -50,14 +50,14 @@
 26. ✅️ 實作 `PATCH /cards/:id` 修改 `title`／`description`（記得更新 `updated_at`）。
 27. ✅️ 驗證：連續新增幾張卡片，`GET /cards` 的待辦欄裡最新的在最上面、position 連續；`title` 空白、超過 255 字回 `422`；id 不是 UUID 回 `404`；**用第二個帳號改第一個帳號的卡片回 `404`**，`GET /cards` 也看不到別人的卡片。
 
-## 第五階段：排序與移動
+## ✅️ 第五階段：排序與移動
 
-28. 先用 SQL 手動試一次：在同一欄放 position 0、1、2 三張卡片，執行不帶 `ORDER BY` 的 `UPDATE cards SET position = position + 1 WHERE ...`，確認會撞到唯一約束失敗，加上 `ORDER BY position DESC` 就會成功（理解為什麼排序要指定更新順序）。
-29. 寫 `src/ordering.js`：「移動卡片」與「刪除後往前補」兩個函式（步驟見 [database.md](database.md)「移動步驟」），函式接收交易物件 `trx`；每個 `increment`／`decrement` 都要指定 `orderBy`。
-30. `PATCH /cards/:id` 加上同一欄內調整 `position`。
-31. `PATCH /cards/:id` 加上移到另一欄（`status` + `position`），交易內同時處理原欄與目標欄的 position。
-32. 實作 `DELETE /cards/:id`（刪除後同一欄後面的卡片往前補）。
-33. 驗證：用第二個帳號移動、刪除第一個帳號的卡片都回 `404`；`status` 不是三個值之一回 `422`。每欄各放 3 張卡片，試各種移動：同一欄往前、往後、移到原位置、移到最前面、最後面、position 超出範圍被夾住；跨欄移到最前面、中間、最後面、移到空的欄；刪除中間的卡片。每次都用 DBeaver 確認每一欄的 position 都是連續的 0～n-1，且跟 `GET /cards` 回傳的順序一致。
+28. ✅️ 先用 SQL 手動試一次：在同一欄放 position 0、1、2 三張卡片，執行不帶 `ORDER BY` 的 `UPDATE cards SET position = position + 1 WHERE ...`，確認會撞到唯一約束失敗，加上 `ORDER BY position DESC` 就會成功（理解為什麼排序要指定更新順序）。
+29. ✅️ 寫 `src/ordering.js`：「移動卡片」與「刪除後往前補」兩個函式（步驟見 [database.md](database.md)「移動步驟」），函式接收交易物件 `trx`；每個 `increment`／`decrement` 都要指定 `orderBy`。
+30. ✅️ `PATCH /cards/:id` 加上同一欄內調整 `position`。
+31. ✅️ `PATCH /cards/:id` 加上移到另一欄（`status` + `position`），交易內同時處理原欄與目標欄的 position。
+32. ✅️ 實作 `DELETE /cards/:id`（刪除後同一欄後面的卡片往前補）。
+33. ✅️ 驗證：用第二個帳號移動、刪除第一個帳號的卡片都回 `404`；`status` 不是三個值之一回 `422`。每欄各放 3 張卡片，試各種移動：同一欄往前、往後、移到原位置、移到最前面、最後面、position 超出範圍被夾住；跨欄移到最前面、中間、最後面、移到空的欄；刪除中間的卡片。每次都用 DBeaver 確認每一欄的 position 都是連續的 0～n-1，且跟 `GET /cards` 回傳的順序一致。
 
 ## 第六階段：前端
 
