@@ -5,13 +5,13 @@
 資料表由 Knex migration 建立（`backend/migrations/` 裡每個檔案描述一次結構變更，`npx knex migrate:make <名稱>` 產生新檔，`npm run migrate`（即 `knex migrate:latest`）執行）。
 
 - **相容性**：Hostinger Cloud 上的 MariaDB／MySQL 版本不一定跟本機一樣新，所以只使用 MariaDB 10.6 與 MySQL 8.0 都支援的功能（例如**不用** MariaDB 10.7 才有的原生 `UUID` 型別）。
-- **連線**：API、migration、測試都從環境變數 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` 讀取連線資訊（跟 hPanel 提供資料庫資訊的方式一致），驅動用 `mysql2`。
+- **連線**：API 與 migration 都從環境變數 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` 讀取連線資訊（跟 hPanel 提供資料庫資訊的方式一致），驅動用 `mysql2`。
 - **編碼**：資料庫與資料表一律 `utf8mb4` + `utf8mb4_unicode_ci`，中文與 emoji 都能正常儲存（MySQL 舊的 `utf8` 只有 3 bytes，存不了 emoji）。引擎用 InnoDB（支援交易、外鍵、列鎖定）。
 - **主鍵**：採用 UUID，存成 `CHAR(36)`（字元集 `ascii`，比 `utf8mb4` 省空間），由程式用 `crypto.randomUUID()` 產生後寫入。MySQL 不支援 `INSERT ... RETURNING`（MariaDB 10.5 起才有），為了兩邊都能用，id 先在程式產生，新增後直接用這個 id 查回完整資料。
 - **時間**：時間欄位用 `DATETIME(3)`（精確到毫秒），**一律存 UTC**。`DATETIME` 本身不帶時區，所以連線時要設定 `timezone: 'Z'`（`mysql2` 讀寫 `Date` 都當成 UTC），並在每條連線建立時執行 `SET time_zone = '+00:00'`（讓 `CURRENT_TIMESTAMP` 也是 UTC）。`created_at`、`updated_at` 預設值都是 `CURRENT_TIMESTAMP(3)`；**更新資料時由程式寫入 `updated_at`**（不用 `ON UPDATE CURRENT_TIMESTAMP`，讓行為都看得到）。
 - **命名**：資料表用複數（`users`、`boards`、`lists`、`cards`），欄位用 `snake_case`，與 API 的 JSON 欄位一致，查出來直接就是回應格式，不需要轉換。
 - **外鍵刪除**：外鍵設定 `ON DELETE CASCADE`，由**資料庫**負責連帶刪除，不管從 API、phpMyAdmin 還是直接用 SQL 刪除，結果都一致。
-- **migration 只用 Knex 產生**：不要手動到資料庫（包含 phpMyAdmin）建表或改欄位；已經在正式環境跑過的 migration 不要修改，要改就新增一個 migration。每個 migration 都要寫 `down`（還原），開發時可以用 `knex migrate:rollback` 測試。注意 MariaDB／MySQL 的 DDL（`CREATE TABLE`、`ALTER TABLE`）不能包在交易裡回滾，migration 跑到一半失敗時要手動清理，所以一個 migration 只做一件事。
+- **migration 只用 Knex 產生**：不要手動到資料庫（包含 phpMyAdmin）建表或改欄位；已經在正式環境跑過的 migration 不要修改，要改就新增一個 migration。每個 migration 都要寫 `down`（還原），開發時可以用 `knex migrate:rollback` 確認能正確還原。注意 MariaDB／MySQL 的 DDL（`CREATE TABLE`、`ALTER TABLE`）不能包在交易裡回滾，migration 跑到一半失敗時要手動清理，所以一個 migration 只做一件事。
 
 ## `users`
 
@@ -108,7 +108,7 @@ MariaDB／MySQL 的唯一約束是**每更新一列就立刻檢查**。例如列
 
 **刪除**：鎖定看板後刪除該筆，再把後面的項目 `position - 1`（`ORDER BY position ASC`）。
 
-這些步驟寫成 `src/ordering.js` 裡的共用函式，列表與卡片共用，並且有獨立的測試（見 [roadmap.md](roadmap.md) 第七階段）。
+這些步驟寫成 `src/ordering.js` 裡的共用函式，列表與卡片共用（驗證方式見 [roadmap.md](roadmap.md) 第五階段）。
 
 ### 為什麼用連續整數
 
@@ -134,7 +134,5 @@ lists  1 --- N cards
 ## 連線與帳號
 
 MariaDB 容器用 `MARIADB_DATABASE`、`MARIADB_USER`、`MARIADB_PASSWORD`、`MARIADB_ROOT_PASSWORD` 初始化；API 用 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` 連線（在 `docker-compose.yml` 裡由前面幾個值帶入；搬到 Hostinger Cloud 時改填 hPanel 提供的值）。API 使用一般帳號，不用 root。不可將正式環境密碼納入版本控制。
-
-測試使用另一個資料庫（例如 `trello_test`，用 `DB_NAME_TEST` 指定），測試前先跑 migration，每個測試開始前清空資料表（有外鍵時 `TRUNCATE` 會被擋，要暫時 `SET FOREIGN_KEY_CHECKS = 0` 再清空，或依 `cards → lists → boards → users` 的順序 `DELETE`），不會動到開發資料。
 
 VPS 正式環境的資料庫只在 Docker 內部網路，不對外開放；每日備份方式見 [roadmap.md](roadmap.md) 第十階段。

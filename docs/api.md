@@ -40,7 +40,7 @@
 2. 前端在送出任何 `POST`／`PATCH`／`DELETE` 之前，先確認有 `csrf_token` Cookie（沒有就先呼叫這支），再把它的值放進 `X-CSRF-Token` header。
 3. 後端的 CSRF middleware 對所有 `POST`／`PATCH`／`DELETE`（**包含未登入時的註冊、登入**）比對 header 與 Session 裡的 token，用 `crypto.timingSafeEqual` 比較，不一致或缺少就回 `403`。
 
-別的網站雖然能讓瀏覽器自動帶上 Cookie，但讀不到 Cookie 的內容，也就放不進 header，所以偽造的請求會被擋下。登入成功後會換一個新的 Session 與新的 token（並更新 Cookie），所以前端每次送出請求時都要**重新讀取** Cookie，不要只在啟動時讀一次。（這跟 Todo 專案 Laravel 版的 `XSRF-TOKEN` 流程是同樣的概念。）
+別的網站雖然能讓瀏覽器自動帶上 Cookie，但讀不到 Cookie 的內容，也就放不進 header，所以偽造的請求會被擋下。登入成功後會換一個新的 Session 與新的 token（並更新 Cookie），所以前端每次送出請求時都要**重新讀取** Cookie，不要只在啟動時讀一次。
 
 ## 認證
 
@@ -222,7 +222,7 @@ email 重複的檢查除了先查一次，還要處理資料庫唯一約束的�
   "id": "uuid",
   "list_id": "uuid",
   "title": "設計登入頁",
-  "description": "參考 Todo 專案的登入頁",
+  "description": "包含錯誤訊息的顯示",
   "position": 0,
   "created_at": "2026-11-13T12:00:00.123Z",
   "updated_at": "2026-11-13T12:00:00.123Z"
@@ -241,7 +241,7 @@ email 重複的檢查除了先查一次，還要處理資料庫唯一約束的�
 ```json
 {
   "title": "設計登入頁",
-  "description": "參考 Todo 專案的登入頁"
+  "description": "包含錯誤訊息的顯示"
 }
 ```
 
@@ -275,11 +275,7 @@ email 重複的檢查除了先查一次，還要處理資料庫唯一約束的�
 | `403` | CSRF 驗證失敗（缺少或不正確的 `X-CSRF-Token`）。 |
 | `404` | 找不到資源，或資源不屬於目前使用者。 |
 | `415` | 請求不是 `application/json`。 |
-| `422` | 請求欄位驗證失敗（跟 Todo 專案一致）。 |
+| `422` | 請求欄位驗證失敗。 |
 | `429` | 登入／註冊請求過於頻繁。 |
 | `500` | 非預期的伺服器錯誤。 |
 | `503` | 健康檢查時資料庫無法連線。 |
-
-## 範圍之外
-
-忘記密碼／重設密碼、看板成員共享、標籤、到期日、留言等功能不在 MVP 範圍內，見 [architecture.md](architecture.md)「後續規劃」。要開始做時再補上規格。
