@@ -45,6 +45,6 @@
 | --- | --- | --- |
 | `frontend` | Vue 3 + Vite 開發伺服器 | `3020`（瀏覽器開這個） |
 | `api` | Node.js + Express | `3021` |
-| `db` | MariaDB 11.4 | `3307`（給 DBeaver 等資料庫工具連線） |
+| `db` | MariaDB 11.4 | `3308`（給 DBeaver 等資料庫工具連線） |
 
 詳細的啟動步驟（建立 `.env`、`docker compose up`、執行 migration）將於專案初始化完成後補上。

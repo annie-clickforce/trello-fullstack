@@ -26,7 +26,7 @@ flowchart TD
 
 開發時瀏覽器只連 Vite（`localhost:3020`），`/api` 開頭的請求由 Vite 的 proxy 轉給 `api` 容器。對瀏覽器來說前端和 API 是**同一個來源（same origin）**，所以不需要設定 CORS，Session Cookie 與 CSRF Cookie 也不會有跨網域問題。正式環境由 Caddy 統一提供前端與 API，一樣是同一個來源（見 [deployment.md](deployment.md)）。
 
-本專案沒有內建的管理後台，開發時直接用 DBeaver 連 `localhost:3307` 查看與修改資料。
+本專案沒有內建的管理後台，開發時直接用 DBeaver 連 `localhost:3308` 查看與修改資料。
 
 ## 技術選型
 
@@ -135,9 +135,9 @@ trello-fullstack/
 | --- | --- | --- |
 | `frontend` | 執行 Vue 3 開發伺服器 | `3020` |
 | `api` | 執行 Express（`node --watch src/server.js`，容器內 port `3000`） | `3021` |
-| `db` | 執行 MariaDB 11.4 與保存資料 | `3307`（可用根目錄 `.env` 的 `DB_PORT_HOST` 調整） |
+| `db` | 執行 MariaDB 11.4 與保存資料 | `3308`（可用根目錄 `.env` 的 `DB_PORT_HOST` 調整） |
 
-連接埠刻意避開常見的預設值（例如 `3306`），不會跟電腦上其他專案或已安裝的資料庫衝突。API 在 Docker 內透過 `db:3306` 連線；對外的 `3307` 只給 DBeaver 之類的工具用。
+連接埠刻意避開常見的預設值（例如 `3306`、`3307`），不會跟電腦上其他專案或已安裝的資料庫衝突。API 在 Docker 內透過 `db:3306` 連線；對外的 `3308` 只給 DBeaver 之類的工具用。
 
 ## MVP 範圍
 

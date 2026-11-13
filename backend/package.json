@@ -1,0 +1,16 @@
+{
+  "name": "trello-api",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "migrate": "knex migrate:latest"
+  },
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "express": "^5.3.0",
+    "knex": "^3.3.0",
+    "mysql2": "^3.24.6"
+  }
+}

@@ -6,17 +6,17 @@
 
 > **驗證原則**：每做完一支 API 就用 curl 或 Postman 實際打一次，成功與失敗的情境都要試。尤其「別人的資料要回 `404`」：準備兩個帳號（建議在 Postman 開兩個環境，各自保存 Cookie），每支端點都用第二個帳號試著存取第一個帳號的資料。
 
-## 第一階段：專案初始化與本機環境
+## ✅️ 第一階段：專案初始化與本機環境
 
 1. ✅️ 建立 `trello-fullstack` 資料夾並 `git init`，加上 `.gitignore`（至少排除 `.env`、`node_modules/`、`dist/`）。在 GitHub 建立新的 repository 並推上去。
-2. 建立後端：在 `backend/` 執行 `npm init -y`，`package.json` 加上 `"type": "module"`，安裝 `express`（5.x）、`knex`、`mysql2`；寫 `backend/Dockerfile`（`node:24-alpine`，先複製 `package*.json` 執行 `npm ci`，再複製程式碼）與 `.dockerignore`（排除 `node_modules`）。
-3. 寫最小的 `src/app.js`（建立 Express app 並匯出，先只有 `GET /api/v1/health` 回 `{ "status": "ok" }`）與 `src/server.js`（import app、讀 `PORT` 環境變數（預設 `3000`）並 `listen`）。`package.json` 的 scripts 加上 `dev`（`node --watch src/server.js`）與 `start`（`node src/server.js`）。
-4. 寫 `docker-compose.yml`：`db`（`mariadb:11.4`，對外 port `3307`，加上資料卷；字元集設為 `utf8mb4`）、`api`（`npm run dev`，對外 port `3021` 對應容器內的 `3000`，掛載原始碼）。資料庫連線、`SESSION_SECRET`、`NODE_ENV` 都讀環境變數，集中在 `src/config.js` 讀取並檢查（缺少必要的值就直接啟動失敗，不要默默用預設值），根目錄寫 `.env.example`。
-5. 寫 `knexfile.js`（client `mysql2`，連線讀 `DB_HOST`／`DB_PORT`／`DB_NAME`／`DB_USER`／`DB_PASSWORD`，設定 `timezone: 'Z'` 與 `charset: 'utf8mb4'`，pool 的 `afterCreate` 執行 `SET time_zone = '+00:00'`；migration 資料夾 `migrations/`）與 `src/db.js`（建立 Knex 實例）；scripts 加上 `migrate`（`knex migrate:latest`）。
-6. 驗證：`docker compose up --build` 後，`curl http://localhost:3021/api/v1/health` 回 `{"status":"ok"}`；改一下回傳內容，確認 `node --watch` 會自動重啟。
-7. 建立前端：`npm create vite@latest frontend -- --template vue`，安裝 `vue-router`；寫 `frontend/Dockerfile`，在 `docker-compose.yml` 加上 `frontend` 服務（port `3020`）。
-8. 在 `frontend/vite.config.js` 設定開發伺服器 proxy：`/api` 轉發到 `http://api:3000`。前端呼叫 API 時一律用相對路徑 `/api/v1/...`。
-9. 驗證：瀏覽器開 `http://localhost:3020` 看到 Vue 預設畫面；DBeaver 用 `localhost:3307` 連得進 MariaDB。
+2. ✅️ 建立後端：在 `backend/` 執行 `npm init -y`，`package.json` 加上 `"type": "module"`，安裝 `express`（5.x）、`knex`、`mysql2`；寫 `backend/Dockerfile`（`node:24-alpine`，先複製 `package*.json` 執行 `npm ci`，再複製程式碼）與 `.dockerignore`（排除 `node_modules`）。
+3. ✅️ 寫最小的 `src/app.js`（建立 Express app 並匯出，先只有 `GET /api/v1/health` 回 `{ "status": "ok" }`）與 `src/server.js`（import app、讀 `PORT` 環境變數（預設 `3000`）並 `listen`）。`package.json` 的 scripts 加上 `dev`（`node --watch src/server.js`）與 `start`（`node src/server.js`）。
+4. ✅️ 寫 `docker-compose.yml`：`db`（`mariadb:11.4`，對外 port `3308`，加上資料卷；字元集設為 `utf8mb4`）、`api`（`npm run dev`，對外 port `3021` 對應容器內的 `3000`，掛載原始碼）。資料庫連線、`SESSION_SECRET`、`NODE_ENV` 都讀環境變數，集中在 `src/config.js` 讀取並檢查（缺少必要的值就直接啟動失敗，不要默默用預設值），根目錄寫 `.env.example`。
+5. ✅️ 寫 `knexfile.js`（client `mysql2`，連線讀 `DB_HOST`／`DB_PORT`／`DB_NAME`／`DB_USER`／`DB_PASSWORD`，設定 `timezone: 'Z'` 與 `charset: 'utf8mb4'`，pool 的 `afterCreate` 執行 `SET time_zone = '+00:00'`；migration 資料夾 `migrations/`）與 `src/db.js`（建立 Knex 實例）；scripts 加上 `migrate`（`knex migrate:latest`）。
+6. ✅️ 驗證：`docker compose up --build` 後，`curl http://localhost:3021/api/v1/health` 回 `{"status":"ok"}`；改一下回傳內容，確認 `node --watch` 會自動重啟。
+7. ✅️ 建立前端：`npm create vite@latest frontend -- --template vue`，安裝 `vue-router`；寫 `frontend/Dockerfile`，在 `docker-compose.yml` 加上 `frontend` 服務（port `3020`）。
+8. ✅️ 在 `frontend/vite.config.js` 設定開發伺服器 proxy：`/api` 轉發到 `http://api:3000`。前端呼叫 API 時一律用相對路徑 `/api/v1/...`。
+9. ✅️ 驗證：瀏覽器開 `http://localhost:3020` 看到 Vue 預設畫面；DBeaver 用 `localhost:3308` 連得進 MariaDB。
 
 > **已知問題**：Windows 上 Docker 掛載的資料夾，檔案變更通知有時候傳不進容器，`node --watch` 不會自動重啟。改完後端程式打 API 發現行為沒變，先 `docker compose restart api` 再測。
 
