@@ -69,11 +69,13 @@ flowchart TD
 
    沒設定 `FRONTEND_DIST` 時行為跟以前一樣（本機開發由 Vite 提供前端）。
 2. ✅️ **建置與啟動指令**：專案是 `frontend/`、`backend/` 兩個資料夾，Web App 需要一組指令同時完成「建置前端」與「安裝後端套件」，所以專案根目錄有一個 `package.json`：
-   - `build`：`npm ci --prefix frontend && npm run build --prefix frontend && npm ci --omit=dev --prefix backend`
+   - `build`：`npm ci --include=dev --prefix frontend && npm run build --prefix frontend && npm ci --omit=dev --prefix backend`
    - `start`：`npm start --prefix backend`
    - `engines` 寫 `"node": "24.x"`，讓 Hostinger 自動選 Node.js 24。
 
-   **待確認**：建立 Web App 時，在 Review build settings 找有沒有 Root directory／Application directory／Source directory 這類欄位。有的話可以直接指定 `backend/`（前端建置指令再另外處理）；沒有的話就用上面根目錄 `package.json` 的做法。確認後把實際用的設定寫回這份文件。
+   前端的 `npm ci` 一定要加 `--include=dev`：Web App 的環境變數在**建置時也會生效**，`NODE_ENV=production` 會讓 npm 跳過 devDependencies，而 Vite 與 `@vitejs/plugin-vue` 都是 devDependencies，少了它們前端建置會失敗（`Cannot find package '@vitejs/plugin-vue'`）。
+
+   Web App 的 Root directory 保持 `./`（專案根目錄），不要設成 `backend/`，否則建置時看不到 `frontend/`。
 
 ## 部署步驟
 
@@ -91,7 +93,20 @@ flowchart TD
 5. ✅️ 在本機模擬正式環境：用 `node:24-alpine` 容器在專案根目錄執行 `npm run build`，再設定 `NODE_ENV=production`、`FRONTEND_DIST=../frontend/dist` 執行 `npm start`（連本機的 MariaDB）。確認首頁與直接開 `/login`、`/board` 都回 Vue 畫面，`/api/v1/health` 回 `200`，`/api/v1/nope` 回 JSON `404`，回應帶有 helmet 的 `Content-Security-Policy`、`Strict-Transport-Security`；用瀏覽器完整走一次註冊 → 登入 → 新增 → 編輯 → 拖到別欄 → 重新整理 → 刪除 → 登出，Console 沒有 CSP 錯誤。
 
    > 用新版 npm（11 以上）安裝時會出現 `argon2` 的 install script 沒有執行的警告。`argon2` 套件內附各平台編譯好的檔案，不需要 install script，實際註冊、登入都正常，可以忽略。
-6. 把程式 push 到 GitHub，在 hPanel 新增 Web App，選「從 GitHub 匯入」，框架選 **Express**，Node.js 版本選 **24**，在 Review build settings 填入建置指令（`npm run build`）與啟動指令（`npm start`），並確認有沒有根目錄欄位（見「部署前要改的程式」第 2 項）。
+6. 把程式 push 到 GitHub。在 hPanel 左邊選單 **Websites** →（方案區塊的）**Create site** → **Web App**，網域填 `trello.你的網域`（Domain type 為 Registered elsewhere），來源選 **Import your Git repository** → **Connect with GitHub**。GitHub 授權頁選 **Only select repositories**，只勾這個專案（Hostinger 要求的是程式碼讀寫權限，不要開放全部 repository）。Build and output settings 填：
+
+   | 欄位 | 值 |
+   | --- | --- |
+   | Framework preset | Other |
+   | Branch | `main` |
+   | Node version | 24.x |
+   | Root directory | `./` |
+   | Build command | `npm run build` |
+   | Package manager | npm |
+   | Output directory | 留空（前端由 Express 提供，不是純靜態網站） |
+   | Entry file | `backend/src/server.js` |
+
+   Hostinger 會讀 `.env.example` 自動帶入變數名稱，其中 `DB_ROOT_PASSWORD`、`DB_PORT_HOST` 只給本機 Docker 用，要刪掉。
 7. 在 **Review build settings → Environment variables** 填入下列環境變數（可以逐筆新增，也可以匯入 `.env` 檔；正式環境的 `.env` 只放在自己電腦，不進版本控制）：
 
    | 變數 | 值 |
