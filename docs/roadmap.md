@@ -20,12 +20,12 @@
 
 > **已知問題**：Windows 上 Docker 掛載的資料夾，檔案變更通知有時候傳不進容器，`node --watch` 不會自動重啟。改完後端程式打 API 發現行為沒變，先 `docker compose restart api` 再測。
 
-## 第二階段：資料庫與 migration
+## ✅️ 第二階段：資料庫與 migration
 
-10. 用 `npx knex migrate:make create_users` 建立第一個 migration，依 [database.md](database.md) 建立 `users` 表：`id` 用 `char(36)`（由程式 `crypto.randomUUID()` 產生）、`email` 唯一、`password_hash`、`created_at`／`updated_at` 用 `datetime(3)` 並預設 `CURRENT_TIMESTAMP(3)`；資料表字元集 `utf8mb4`、引擎 InnoDB。記得寫 `down`。
-11. 建立 `sessions` 表的 migration（`express-mysql-session` 用的結構：`session_id` 主鍵、`expires`、`data`）。
-12. 執行 `npm run migrate`，用 DBeaver 確認兩張表的欄位與型別符合 database.md（`id` 是 `char(36)`、時間是 `datetime(3)`、字元集是 `utf8mb4`）；在資料表存一筆中文加 emoji 的資料確認沒有變成問號。再執行一次 `npx knex migrate:rollback` 確認能還原，然後重新 migrate。
-13. 讓 `GET /api/v1/health` 真的查一次資料庫（`SELECT 1`），成功回 `200`，失敗回 `503`。驗證：`docker compose stop db` 後打 health 會回 `503`。
+10. ✅️ 用 `npx knex migrate:make create_users` 建立第一個 migration，依 [database.md](database.md) 建立 `users` 表：`id` 用 `char(36)`（由程式 `crypto.randomUUID()` 產生）、`email` 唯一、`password_hash`、`created_at`／`updated_at` 用 `datetime(3)` 並預設 `CURRENT_TIMESTAMP(3)`；資料表字元集 `utf8mb4`、引擎 InnoDB。記得寫 `down`。
+11. ✅️ 建立 `sessions` 表的 migration（`express-mysql-session` 用的結構：`session_id` 主鍵、`expires`、`data`）。
+12. ✅️ 執行 `npm run migrate`，用 DBeaver 確認兩張表的欄位與型別符合 database.md（`id` 是 `char(36)`、時間是 `datetime(3)`、字元集是 `utf8mb4`）；在資料表存一筆中文加 emoji 的資料確認沒有變成問號。再執行一次 `npx knex migrate:rollback` 確認能還原，然後重新 migrate。
+13. ✅️ 讓 `GET /api/v1/health` 真的查一次資料庫（`SELECT 1`），成功回 `200`，失敗回 `503`。驗證：`docker compose stop db` 後打 health 會回 `503`。
 
 ## 第三階段：使用者認證（註冊、登入、登出）
 
