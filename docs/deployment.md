@@ -13,7 +13,7 @@
 - **資料庫統一用 MariaDB**，只使用 MariaDB 10.6 與 MySQL 8.0 都支援的功能（見 [database.md](database.md)「相容性」）。
 - **API 不存狀態**：Session 存在資料庫，不存在記憶體或本機檔案；程式也不寫任何本機檔案（上傳、log 檔都不寫）。
 - **設定全部來自環境變數**：資料庫連線用 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`，監聽的 port 讀 `PORT`；程式碼裡不寫死任何主機（例如 Docker 的 `db`）、密碼。
-- **正式環境才需要的設定也用環境變數開關**：Cookie 的 `secure`、Express 的 `trust proxy`、錯誤訊息是否隱藏細節，都由 `NODE_ENV` 等環境變數控制。本機開發時關閉，部署時打開，不用改程式。
+- **正式環境才需要的設定也用環境變數開關**：Cookie 的 `secure` 由 `COOKIE_SECURE=true` 打開，Express 的 `trust proxy` 由 `TRUST_PROXY=1` 設定（API 前面有幾層反向代理就填幾）。本機開發不設定（預設關閉），部署時在正式環境的 `.env` 加上，不用改程式。錯誤訊息一律不回傳細節，本機與正式環境相同。
 - **程式碼不依賴 Docker**：Docker 只是執行方式，`npm ci && npm start` 在任何裝了 Node.js 24 的地方都要能跑。
 - **migration 是獨立指令**（`npm run migrate`），不在 API 啟動時自動執行。
 - **log 一律輸出到 stdout／stderr**，由 Docker 或主機平台收集。
@@ -76,7 +76,7 @@ flowchart TD
 8. 確認 API 的正式環境啟動方式：`NODE_ENV=production`、用 `npm start`（`node src/server.js`，不用 `--watch`）；Dockerfile 的正式環境映像檔用 `npm ci --omit=dev`，只安裝執行需要的套件。
 9. 寫 `Caddyfile`：網域、`/api/*` 反向代理到 `api:3000`，其他路徑提供前端靜態檔並在找不到檔案時回 `index.html`。
 10. 寫 `docker-compose.prod.yml`：`caddy`（只有它開放 `80`／`443`，映像檔建置時先用 Node 編譯前端再複製進去）、`api`（`npm start`，**不開放連接埠**）、`db`（**不開放連接埠**，資料卷保存資料）。Caddy 的憑證資料也要用資料卷保存，否則每次重建都要重新申請。
-11. 確認正式環境的 Express 設定都已由環境變數打開：`app.set('trust proxy', 1)`（API 在 Caddy 後面，要靠這個才拿得到使用者真正的 IP，速率限制才不會把所有人當成同一個 IP 一起擋，也才能判斷原始請求是 HTTPS）、Session Cookie `secure: true`、`httpOnly: true`、`sameSite: 'lax'`；`csrf_token` Cookie 也設 `secure`；錯誤處理 middleware 不回傳錯誤細節。
+11. 在正式環境的 `.env` 加上 `NODE_ENV=production`、`COOKIE_SECURE=true`、`TRUST_PROXY=1`，確認正式環境的 Express 設定都已打開：`app.set('trust proxy', 1)`（API 在 Caddy 後面，要靠這個才拿得到使用者真正的 IP，速率限制才不會把所有人當成同一個 IP 一起擋，也才能判斷原始請求是 HTTPS）、Session Cookie `secure: true`、`httpOnly: true`、`sameSite: 'lax'`；`csrf_token` Cookie 也設 `secure`；錯誤處理 middleware 不回傳錯誤細節。
 
 ### 三、部署與驗證
 

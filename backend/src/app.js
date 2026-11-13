@@ -1,18 +1,29 @@
-// 建立 Express app 並掛上路由。這裡不呼叫 listen()，啟動交給 server.js。
+// 建立 Express app、掛上 middleware 與路由。這裡不呼叫 listen()，啟動交給 server.js。
 import express from 'express';
-import db from './db.js';
+import helmet from 'helmet';
+import config from './config.js';
+import { sessionMiddleware } from './session.js';
+import { requireJson } from './middleware/requireJson.js';
+import { verifyCsrf } from './middleware/csrf.js';
+import { notFound, errorHandler } from './middleware/errorHandler.js';
+import healthRouter from './routes/health.js';
+import authRouter from './routes/auth.js';
 
 const app = express();
 
-// 健康檢查：真的查一次資料庫，連不到時回 503
-app.get('/api/v1/health', async (req, res) => {
-  try {
-    await db.raw('SELECT 1');
-    res.json({ status: 'ok' });
-  } catch (error) {
-    console.error('Health check failed:', error.message);
-    res.status(503).json({ status: 'error' });
-  }
-});
+// 在反向代理（Caddy）後面時才設定，才拿得到使用者真正的 IP；本機開發維持 0
+if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy);
+
+app.use(helmet());
+app.use(requireJson);
+app.use(express.json());
+app.use(sessionMiddleware);
+app.use(verifyCsrf);
+
+app.use('/api/v1/health', healthRouter);
+app.use('/api/v1/auth', authRouter);
+
+app.use(notFound);
+app.use(errorHandler);
 
 export default app;

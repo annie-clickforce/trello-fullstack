@@ -11,6 +11,9 @@ const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 3000),
   sessionSecret: process.env.SESSION_SECRET,
+  // 正式環境（HTTPS、在反向代理後面）才打開；本機開發維持預設值
+  cookieSecure: process.env.COOKIE_SECURE === 'true',
+  trustProxy: Number(process.env.TRUST_PROXY ?? 0),
   db: {
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),

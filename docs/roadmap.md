@@ -27,17 +27,17 @@
 12. ✅️ 執行 `npm run migrate`，用 DBeaver 確認兩張表的欄位與型別符合 database.md（`id` 是 `char(36)`、時間是 `datetime(3)`、字元集是 `utf8mb4`）；在資料表存一筆中文加 emoji 的資料確認沒有變成問號。再執行一次 `npx knex migrate:rollback` 確認能還原，然後重新 migrate。
 13. ✅️ 讓 `GET /api/v1/health` 真的查一次資料庫（`SELECT 1`），成功回 `200`，失敗回 `503`。驗證：`docker compose stop db` 後打 health 會回 `503`。
 
-## 第三階段：使用者認證（註冊、登入、登出）
+## ✅️ 第三階段：使用者認證（註冊、登入、登出）
 
-14. 安裝 `helmet`、`express-session`、`express-mysql-session`、`argon2`、`zod`、`express-rate-limit`。設定全域 middleware：`helmet()`、`express.json()`、Content-Type 檢查（`POST`／`PATCH` 不是 `application/json` 回 `415`）、`express-session`（store 用 `express-mysql-session` 並關閉 `createDatabaseTable`、`secret` 讀 `SESSION_SECRET`、`resave: false`、`saveUninitialized: false`、Cookie `httpOnly`、`sameSite: 'lax'`）。Cookie 的 `secure` 與 `trust proxy` 先做成由環境變數控制，本機關閉、部署時打開（見 [deployment.md](deployment.md)「開發時就要遵守的原則」）。
-15. 寫錯誤處理：定義一個帶狀態碼的錯誤類別（例如 `HttpError(status, message, errors)`），以及最後的錯誤處理 middleware，把 `HttpError`、Zod 驗證錯誤（轉成 `422` 與 `errors` 物件）、JSON 解析錯誤（`400`）、其他未預期錯誤（`500`，只記 log）統一轉成 [api.md](api.md) 的格式；找不到的路由回 JSON 的 `404`。驗證：用 curl 送壞掉的 JSON、送 `text/plain`、打不存在的路徑，確認都回 JSON 格式的錯誤。
-16. 寫 CSRF middleware 與 `GET /auth/csrf`（流程見 [api.md](api.md)「CSRF」）：token 存在 Session 並寫進 `csrf_token` Cookie，所有 `POST`／`PATCH`／`DELETE` 都比對 `X-CSRF-Token` header，**包含未登入時的註冊與登入**。
-17. 寫 `requireAuth` middleware：Session 裡沒有 `userId` 就回 `401`。
-18. 實作 `POST /auth/register`：用 Zod 驗證欄位（email 去空白、轉小寫），密碼用 `argon2.hash()` 雜湊後寫入，回傳 `201`（不含 `password_hash`）。email 重複時回 `422`，並處理同時註冊時資料庫唯一約束的錯誤（錯誤碼 `ER_DUP_ENTRY`）。
-19. 實作 `POST /auth/login`：查出使用者後用 `argon2.verify()` 比對密碼；成功後 `req.session.regenerate()` 更換 Session ID，存入 `userId`、產生新的 CSRF token，回傳使用者資料；失敗一律回 `401` 與相同訊息（帳號不存在時也要花差不多的時間，可以對一個假的雜湊值做一次 `verify`，避免從回應時間猜出帳號是否存在）。
-20. 實作 `GET /auth/me` 與 `POST /auth/logout`（`req.session.destroy()`，清除 Cookie，回 `204`）。
-21. 速率限制：登入、註冊加上 `express-rate-limit`（每個 IP 每分鐘 5 次，超過回 `429` 與 API 的錯誤格式）。
-22. 用 curl 或 Postman 走一次完整流程：取得 CSRF Cookie → 註冊 → 登入 → `/auth/me` → 登出 → 再打 `/auth/me` 回 `401`。並確認以下情境：
+14. ✅️ 安裝 `helmet`、`express-session`、`express-mysql-session`、`argon2`、`zod`、`express-rate-limit`。設定全域 middleware：`helmet()`、`express.json()`、Content-Type 檢查（`POST`／`PATCH` 不是 `application/json` 回 `415`）、`express-session`（store 用 `express-mysql-session` 並關閉 `createDatabaseTable`、`secret` 讀 `SESSION_SECRET`、`resave: false`、`saveUninitialized: false`、Cookie `httpOnly`、`sameSite: 'lax'`）。Cookie 的 `secure` 與 `trust proxy` 先做成由環境變數控制，本機關閉、部署時打開（見 [deployment.md](deployment.md)「開發時就要遵守的原則」）。
+15. ✅️ 寫錯誤處理：定義一個帶狀態碼的錯誤類別（例如 `HttpError(status, message, errors)`），以及最後的錯誤處理 middleware，把 `HttpError`、Zod 驗證錯誤（轉成 `422` 與 `errors` 物件）、JSON 解析錯誤（`400`）、其他未預期錯誤（`500`，只記 log）統一轉成 [api.md](api.md) 的格式；找不到的路由回 JSON 的 `404`。驗證：用 curl 送壞掉的 JSON、送 `text/plain`、打不存在的路徑，確認都回 JSON 格式的錯誤。
+16. ✅️ 寫 CSRF middleware 與 `GET /auth/csrf`（流程見 [api.md](api.md)「CSRF」）：token 存在 Session 並寫進 `csrf_token` Cookie，所有 `POST`／`PATCH`／`DELETE` 都比對 `X-CSRF-Token` header，**包含未登入時的註冊與登入**。
+17. ✅️ 寫 `requireAuth` middleware：Session 裡沒有 `userId` 就回 `401`。
+18. ✅️ 實作 `POST /auth/register`：用 Zod 驗證欄位（email 去空白、轉小寫），密碼用 `argon2.hash()` 雜湊後寫入，回傳 `201`（不含 `password_hash`）。email 重複時回 `422`，並處理同時註冊時資料庫唯一約束的錯誤（錯誤碼 `ER_DUP_ENTRY`）。
+19. ✅️ 實作 `POST /auth/login`：查出使用者後用 `argon2.verify()` 比對密碼；成功後 `req.session.regenerate()` 更換 Session ID，存入 `userId`、產生新的 CSRF token，回傳使用者資料；失敗一律回 `401` 與相同訊息（帳號不存在時也要花差不多的時間，可以對一個假的雜湊值做一次 `verify`，避免從回應時間猜出帳號是否存在）。
+20. ✅️ 實作 `GET /auth/me` 與 `POST /auth/logout`（`req.session.destroy()`，清除 Cookie，回 `204`）。
+21. ✅️ 速率限制：登入、註冊加上 `express-rate-limit`（每個 IP 每分鐘 5 次，超過回 `429` 與 API 的錯誤格式）。
+22. ✅️ 用 curl 或 Postman 走一次完整流程：取得 CSRF Cookie → 註冊 → 登入 → `/auth/me` → 登出 → 再打 `/auth/me` 回 `401`。並確認以下情境：
     - 註冊：email 重複、email 只差大小寫、密碼太短，都回 `422`；回應裡沒有 `password_hash`。
     - 登入：密碼錯誤與帳號不存在回一樣的 `401` 訊息；不帶 `X-CSRF-Token` 回 `403`；連續第 6 次回 `429`。
     - DBeaver：`users` 有新資料、`password_hash` 是 `$argon2id$` 開頭；`sessions` 表有寫入，登出後該筆被刪除。
