@@ -145,9 +145,9 @@ flowchart TD
 12. ✅️ 檢查正式環境的回應：`curl -i` 打一個不存在的 API 路徑（例如 `/api/v1/nope`）與一個會出錯的情境，確認回的是 JSON 錯誤格式、沒有錯誤堆疊，也沒有 `X-Powered-By: Express` 標頭；回應有 `Strict-Transport-Security`、`Content-Security-Policy`、`X-Frame-Options: DENY`、`X-Content-Type-Options`、`Referrer-Policy` 等 helmet 加上的標頭（頁面、API、前端靜態檔都由 Express 提供，所以都有）。
 
     > Hostinger 會在回應另外加上 `Server: LiteSpeed`、`platform: hostinger`、`panel: hpanel`，以及第二個 `Content-Security-Policy: upgrade-insecure-requests`。前者是主機層加的，程式移除不了；後者跟我們的 CSP 同時生效（瀏覽器兩條都要符合），內容已經包含在我們的 CSP 裡，沒有影響。
-13. 登入後在瀏覽器開發者工具確認 Session Cookie 與 `csrf_token` Cookie 都有 `Secure`；Console 沒有 Content-Security-Policy 擋掉資源的錯誤。
+13. ✅️ 登入後在瀏覽器開發者工具確認 Session Cookie 與 `csrf_token` Cookie 都有 `Secure`；Console 沒有 Content-Security-Policy 擋掉資源的錯誤。
 14. 確認 `trust proxy` 設定正確：連續登入失敗觸發速率限制後，用另一個網路（例如手機熱點）登入不受影響。如果另一個網路也被擋，代表所有人被當成同一個 IP，要調整 `TRUST_PROXY`。
-15. 在正式網址完整走一次：註冊 → 登入 → 新增卡片 → 編輯 → 拖到別欄 → 重新整理確認順序 → 刪除 → 登出。
+15. ✅️ 在正式網址完整走一次：註冊 → 登入 → 新增卡片 → 編輯 → 拖到別欄 → 重新整理確認順序 → 刪除 → 登出。
 
 ### 五、維運
 

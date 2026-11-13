@@ -76,18 +76,6 @@
 
 確認 API 正常：<http://localhost:3021/api/v1/health> 會回傳 `{"status":"ok"}`。
 
-### 常用指令
-
-| 用途 | 指令 |
-| --- | --- |
-| 查看 API 的 log | `docker compose logs -f api` |
-| 改完後端程式後重新啟動 API | `docker compose restart api` |
-| 停止所有服務（保留資料） | `docker compose down` |
-| 安裝新套件後重新建置 | `docker compose up -d --build -V` |
-| 清空資料庫重新開始（**會刪除所有資料**） | `docker compose down -v`，再重新執行上面第 2、3 步 |
-
-> **Windows 注意事項**：專案放在 Windows 資料夾時，檔案變更通知可能傳不進容器，後端改完程式不會自動重新啟動，請手動執行 `docker compose restart api`。前端已設定輪詢偵測，不受影響。
-
 ### 用資料庫工具連線
 
 DBeaver 等工具選 MariaDB，連 `localhost:3308`，資料庫、帳號、密碼為 `.env` 裡的 `DB_NAME`、`DB_USER`、`DB_PASSWORD`。
