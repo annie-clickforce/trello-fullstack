@@ -1,0 +1,12 @@
+{
+  "name": "trello-fullstack",
+  "private": true,
+  "description": "正式環境（Hostinger Web App）的建置與啟動入口：建置前端、安裝後端套件，再啟動 backend/",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "build": "npm ci --prefix frontend && npm run build --prefix frontend && npm ci --omit=dev --prefix backend",
+    "start": "npm start --prefix backend"
+  }
+}

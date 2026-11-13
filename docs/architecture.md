@@ -104,6 +104,7 @@ sequenceDiagram
 trello-fullstack/
 ├─ docker-compose.yml          # 本機開發
 ├─ .env.example
+├─ package.json                # 正式環境（Hostinger Web App）的 build、start 入口
 ├─ backend/
 │  ├─ Dockerfile
 │  ├─ package.json             # "type": "module"；scripts：dev、start、migrate

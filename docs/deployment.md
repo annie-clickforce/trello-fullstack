@@ -62,13 +62,13 @@ flowchart TD
 
 ## 部署前要改的程式
 
-1. **Express 提供前端檔案（`FRONTEND_DIST`）**：在 `config.js` 讀取 `FRONTEND_DIST`（Vue 建置結果 `dist/` 的路徑，相對路徑以 `backend/` 為基準）。有設定時，`app.js` 在 API 路由之後、`notFound` 之前加上：
+1. ✅️ **Express 提供前端檔案（`FRONTEND_DIST`）**：`config.js` 讀取 `FRONTEND_DIST`（Vue 建置結果 `dist/` 的路徑，相對路徑以 `backend/` 為基準，不受啟動時所在目錄影響）。有設定時，`app.js` 在 API 路由之後、`notFound` 之前加上：
    - `express.static(FRONTEND_DIST)` 提供 JS、CSS、圖片。
-   - 不是 `/api` 開頭的 `GET` 請求都回 `index.html`，讓重新整理 `/login` 這類前端路由時不會 404。
-   - `/api` 開頭但不存在的路徑仍然交給 `notFound`，回 JSON 格式的 `404`。
+   - 不是 `/api` 開頭、也沒有副檔名的 `GET` 請求都回 `index.html`，讓重新整理 `/login` 這類前端路由時不會 404。
+   - `/api` 開頭但不存在的路徑、找不到的靜態檔（例如 `/assets/nope.js`）仍然交給 `notFound`，回 JSON 格式的 `404`。
 
-   沒設定 `FRONTEND_DIST` 時行為跟現在一樣（本機開發由 Vite 提供前端）。
-2. **建置與啟動指令**：專案是 `frontend/`、`backend/` 兩個資料夾，Web App 需要一組指令同時完成「建置前端」與「安裝後端套件」。在專案根目錄新增 `package.json`：
+   沒設定 `FRONTEND_DIST` 時行為跟以前一樣（本機開發由 Vite 提供前端）。
+2. ✅️ **建置與啟動指令**：專案是 `frontend/`、`backend/` 兩個資料夾，Web App 需要一組指令同時完成「建置前端」與「安裝後端套件」，所以專案根目錄有一個 `package.json`：
    - `build`：`npm ci --prefix frontend && npm run build --prefix frontend && npm ci --omit=dev --prefix backend`
    - `start`：`npm start --prefix backend`
    - `engines` 寫 `"node": "24.x"`，讓 Hostinger 自動選 Node.js 24。
@@ -88,8 +88,10 @@ flowchart TD
 
 ### 二、建立 Web App
 
-5. 完成上方「部署前要改的程式」，push 到 GitHub。在本機先模擬一次：`npm run build` 後，用 `FRONTEND_DIST=../frontend/dist` 啟動 API，瀏覽器開 API 的 port 看得到 Vue 畫面、重新整理 `/login` 不會 404。
-6. 在 hPanel 新增 Web App，選「從 GitHub 匯入」，框架選 **Express**，Node.js 版本選 **24**，在 Review build settings 填入建置指令（`npm run build`）與啟動指令（`npm start`），並確認有沒有根目錄欄位（見「部署前要改的程式」第 2 項）。
+5. ✅️ 在本機模擬正式環境：用 `node:24-alpine` 容器在專案根目錄執行 `npm run build`，再設定 `NODE_ENV=production`、`FRONTEND_DIST=../frontend/dist` 執行 `npm start`（連本機的 MariaDB）。確認首頁與直接開 `/login`、`/board` 都回 Vue 畫面，`/api/v1/health` 回 `200`，`/api/v1/nope` 回 JSON `404`，回應帶有 helmet 的 `Content-Security-Policy`、`Strict-Transport-Security`；用瀏覽器完整走一次註冊 → 登入 → 新增 → 編輯 → 拖到別欄 → 重新整理 → 刪除 → 登出，Console 沒有 CSP 錯誤。
+
+   > 用新版 npm（11 以上）安裝時會出現 `argon2` 的 install script 沒有執行的警告。`argon2` 套件內附各平台編譯好的檔案，不需要 install script，實際註冊、登入都正常，可以忽略。
+6. 把程式 push 到 GitHub，在 hPanel 新增 Web App，選「從 GitHub 匯入」，框架選 **Express**，Node.js 版本選 **24**，在 Review build settings 填入建置指令（`npm run build`）與啟動指令（`npm start`），並確認有沒有根目錄欄位（見「部署前要改的程式」第 2 項）。
 7. 在 **Review build settings → Environment variables** 填入下列環境變數（可以逐筆新增，也可以匯入 `.env` 檔；正式環境的 `.env` 只放在自己電腦，不進版本控制）：
 
    | 變數 | 值 |
