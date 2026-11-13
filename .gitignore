@@ -1,0 +1,23 @@
+# 環境變數與部署資訊（含密碼，不可進版本控制）
+.env
+docs/deployment-info.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+staticfiles/
+
+# Node / 前端
+node_modules/
+dist/
+
+# 編輯器與系統檔
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
