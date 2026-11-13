@@ -85,19 +85,22 @@ async function submit() {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 6px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   cursor: grab;
   min-width: 0;
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
-.card.editing { cursor: default; gap: 6px; }
-h3 { margin: 0; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.card:hover { box-shadow: var(--shadow); border-color: var(--line-strong); }
+.card.editing { cursor: default; gap: 8px; box-shadow: var(--shadow); }
+h3 { margin: 0; font-size: 15px; font-weight: 500; color: var(--heading); overflow-wrap: anywhere; }
 p { margin: 0; font-size: 13px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-.card-actions { display: flex; gap: 12px; margin-top: 4px; font-size: 13px; }
-.card-actions button { border: 0; background: none; padding: 0; color: var(--muted); }
-.card-actions button:hover { color: var(--fg); }
+.card-actions { display: flex; gap: 14px; margin-top: 6px; font-size: 13px; }
+.card-actions button { border: 0; background: none; padding: 0; color: var(--link); }
+.card-actions button:hover { text-decoration: underline; }
+.card-actions .del { color: var(--faint); }
 .card-actions .del:hover { color: var(--danger); }
 </style>

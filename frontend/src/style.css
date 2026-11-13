@@ -1,34 +1,51 @@
+/* 風格參考：白底、淡灰分隔線、深藍綠主色、珊瑚紅強調、細框線按鈕 */
 :root {
-  --bg: #f4f6f5;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --column: #e9edeb;
-  --fg: #1f2a27;
-  --muted: #64716d;
-  --line: #d5dcd9;
-  --accent: #2f7d6d;
+  --subtle: #f7f7f8;
+  --column: #f7f7f8;
+  --fg: #39393e;
+  --heading: #202026;
+  --muted: #66666a;
+  --faint: #a8a8ab;
+  --line: #e5e5e6;
+  --line-strong: #d4d4d6;
+  --accent: #135b7c;
+  --accent-hover: #0e4a66;
   --accent-fg: #ffffff;
-  --danger: #b4443a;
+  --link: #2e90b7;
+  --highlight: #f16c5d;
+  --danger: #f16c5d;
   --danger-fg: #ffffff;
-  --drop: #d3e9e3;
-  --backdrop: rgba(15, 25, 22, 0.45);
-  --font: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --drop: #e3f0f5;
+  --backdrop: rgba(32, 32, 38, 0.45);
+  --shadow: 0 2px 8px rgba(32, 32, 38, 0.08);
+  --font: "Helvetica Neue", Helvetica, Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161c1a;
-    --surface: #222a27;
-    --column: #1c2321;
-    --fg: #e4ebe8;
-    --muted: #9aa8a3;
-    --line: #34403c;
-    --accent: #5fb8a4;
-    --accent-fg: #0f1b18;
-    --danger: #e07a70;
-    --danger-fg: #1b0f0d;
-    --drop: #24413a;
+    --bg: #18181b;
+    --surface: #222226;
+    --subtle: #1d1d21;
+    --column: #1d1d21;
+    --fg: #dcdce0;
+    --heading: #f2f2f4;
+    --muted: #a0a0a6;
+    --faint: #75757b;
+    --line: #333338;
+    --line-strong: #44444a;
+    --accent: #4ea3c8;
+    --accent-hover: #67b3d4;
+    --accent-fg: #0d1d25;
+    --link: #5fb3d6;
+    --highlight: #f38b7f;
+    --danger: #f38b7f;
+    --danger-fg: #2a0f0c;
+    --drop: #1f3440;
     --backdrop: rgba(0, 0, 0, 0.6);
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     color-scheme: dark;
   }
 }
@@ -40,48 +57,60 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: 0.6; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 
 .page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 8px 16px 32px;
+  padding: 24px 16px 40px;
 }
 
 .field {
   width: 100%;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--surface);
-  border-radius: 6px;
-  padding: 7px 9px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: border-color 0.15s;
 }
-textarea.field { resize: vertical; min-height: 56px; }
+.field:hover { border-color: var(--faint); }
+.field:focus { outline: none; border-color: var(--accent); }
+.field::placeholder { color: var(--faint); }
+textarea.field { resize: vertical; min-height: 64px; }
 
+/* 主要按鈕：實心深藍綠 */
 .btn {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--accent-fg);
-  border-radius: 6px;
-  padding: 5px 14px;
+  border-radius: 8px;
+  padding: 6px 16px;
   font-size: 14px;
+  transition: background 0.15s, border-color 0.15s;
 }
-.btn.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+.btn:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+/* 次要按鈕：細框線、小圓角 */
+.btn.ghost { background: transparent; color: var(--fg); border-color: var(--fg); border-radius: 3px; }
+.btn.ghost:hover:not(:disabled) { background: var(--subtle); border-color: var(--fg); }
 .btn.danger { background: var(--danger); border-color: var(--danger); color: var(--danger-fg); }
+.btn.danger:hover:not(:disabled) { background: var(--danger); filter: brightness(0.95); }
 
 .link-btn {
   border: 0;
   background: none;
-  color: var(--muted);
-  text-decoration: underline;
+  color: var(--link);
   padding: 0;
 }
+.link-btn:hover { text-decoration: underline; }
 
 .row { display: flex; gap: 8px; }
 .error { color: var(--danger); font-size: 13px; margin: 0; }

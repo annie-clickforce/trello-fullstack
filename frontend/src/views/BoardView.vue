@@ -1,13 +1,28 @@
 <!-- 看板頁：上方新增表單，下面待辦／進行中／完成三欄，卡片可拖拉 -->
 <template>
-  <div class="page">
-    <header class="topbar">
+  <header class="site-header">
+    <div class="header-inner">
       <div class="brand">我的看板</div>
       <div class="user">
         <span>{{ currentUser?.name }}</span>
-        <button type="button" class="link-btn" @click="doLogout">登出</button>
+        <button type="button" class="btn ghost logout" @click="doLogout">登出</button>
       </div>
-    </header>
+    </div>
+  </header>
+
+  <div class="page">
+    <section v-if="!loading" class="summary" aria-label="進度摘要">
+      <div class="summary-text">
+        <p class="greeting">{{ greeting }}</p>
+        <p class="detail">{{ detail }}</p>
+      </div>
+      <div v-if="total > 0" class="progress">
+        <div class="progress-label">完成 <strong>{{ columns.done.length }}</strong> / {{ total }}</div>
+        <div class="progress-bar" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-fill" :style="{ width: percent + '%' }" />
+        </div>
+      </div>
+    </section>
 
     <form class="top-add" novalidate @submit.prevent="addCard">
       <label class="top-field">
@@ -37,7 +52,7 @@
           group="cards"
           class="cards"
           draggable=".card"
-          ghost-class="ghost"
+          ghost-class="drag-ghost"
           :animation="150"
           filter="input, textarea, button, .editing"
           :prevent-on-filter="false"
@@ -48,7 +63,7 @@
             <CardItem :card="element" :save="(fields) => saveCard(element, fields)" @delete="askDelete(col.key, element)" />
           </template>
           <template #footer>
-            <div v-if="columns[col.key].length === 0" class="empty">把卡片拖到這裡</div>
+            <EmptyColumn v-if="columns[col.key].length === 0" :status="col.key" />
           </template>
         </draggable>
       </section>
@@ -68,11 +83,12 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import draggable from 'vuedraggable';
 import CardItem from '../components/CardItem.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
+import EmptyColumn from '../components/EmptyColumn.vue';
 import { apiFetch } from '../api.js';
 import { currentUser, logout } from '../auth.js';
 
@@ -101,6 +117,24 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+// ---- 進度摘要（從目前的卡片計算） ----
+const total = computed(() => COLUMNS.reduce((n, { key }) => n + columns[key].length, 0));
+const percent = computed(() => (total.value ? Math.round((columns.done.length / total.value) * 100) : 0));
+const greeting = computed(() => `${currentUser.value?.name ?? ''}，${timeOfDay()}`);
+const detail = computed(() => {
+  if (total.value === 0) return '看板還是空的，從新增第一張卡片開始吧。';
+  if (columns.todo.length === 0 && columns.doing.length === 0) return '所有卡片都完成了，做得好！';
+  return `你有 ${columns.todo.length} 件待辦、${columns.doing.length} 件進行中。`;
+});
+
+function timeOfDay() {
+  const hour = new Date().getHours();
+  if (hour < 5) return '夜深了';
+  if (hour < 12) return '早安';
+  if (hour < 18) return '午安';
+  return '晚安';
+}
 
 // 操作失敗時：重新載入，讓畫面回到伺服器上的真實狀態
 async function reloadAfterError(e) {
@@ -211,25 +245,52 @@ async function doLogout() {
 </script>
 
 <style scoped>
-.topbar {
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 0 20px;
 }
-.brand { font-weight: 700; font-size: 18px; }
-.user { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
+.brand { font-weight: 700; font-size: 20px; color: var(--heading); letter-spacing: 0.02em; }
+.user { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+.logout { padding: 3px 12px; }
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  margin-bottom: 20px;
+}
+.summary-text { min-width: 0; }
+.greeting { margin: 0; font-size: 24px; font-weight: 500; color: var(--heading); }
+.detail { margin: 2px 0 0; color: var(--muted); }
+.progress { flex: 0 1 280px; min-width: 200px; }
+.progress-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; text-align: right; font-variant-numeric: tabular-nums; }
+.progress-label strong { color: var(--heading); font-weight: 600; }
+.progress-bar { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.3s; }
+@media (max-width: 560px) {
+  .progress { flex-basis: 100%; }
+  .progress-label { text-align: left; }
+}
 
 .top-add {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px;
+  gap: 12px;
+  background: var(--subtle);
+  border-radius: 8px;
+  padding: 16px;
 }
 .top-field {
   display: flex;
@@ -237,10 +298,10 @@ async function doLogout() {
   gap: 4px;
   font-size: 13px;
   color: var(--muted);
-  flex: 1 1 200px;
+  flex: 1 1 220px;
   min-width: 0;
 }
-.top-add .btn { padding: 7px 20px; }
+.top-add .btn { padding: 8px 28px; }
 .add-error { margin-top: 8px; }
 .banner { margin-top: 12px; }
 
@@ -257,16 +318,21 @@ async function doLogout() {
 
 .column {
   background: var(--column);
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-width: 0;
 }
 .column-head { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 4px; }
-.column-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
-.count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.column-head h2 { margin: 0; font-size: 16px; font-weight: 500; color: var(--heading); display: flex; align-items: center; gap: 8px; }
+/* 欄名前的小圓點：待辦珊瑚紅、進行中深藍綠、完成灰色 */
+.column-head h2::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+.column[aria-label="待辦"] { --dot: var(--highlight); }
+.column[aria-label="進行中"] { --dot: var(--accent); }
+.column[aria-label="完成"] { --dot: var(--faint); }
+.count { font-size: 13px; color: var(--faint); font-variant-numeric: tabular-nums; }
 
 .cards {
   display: flex;
@@ -275,6 +341,9 @@ async function doLogout() {
   min-height: 48px;
   border-radius: 8px;
 }
-.empty { color: var(--muted); font-size: 13px; text-align: center; padding: 14px 0; }
-:deep(.ghost) { opacity: 0.4; background: var(--drop); }
+:deep(.drag-ghost) { opacity: 0.4; background: var(--drop); }
+/* 空欄：拖拉的卡片一進來（欄裡出現 .card），就把提示插圖藏起來，
+   讓佔位直接出現在插圖原本的位置；拖拉中保持原本的高度，欄位不會突然縮小 */
+.cards:has(> .empty) { min-height: 156px; }
+.cards:has(.card) :deep(.empty) { display: none; }
 </style>

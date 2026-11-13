@@ -50,8 +50,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown));
 .dialog {
   background: var(--surface);
   color: var(--fg);
-  border-radius: 10px;
-  padding: 22px 22px 18px;
+  border-radius: 8px;
+  padding: 24px 24px 20px;
   width: 100%;
   max-width: 360px;
   display: flex;
@@ -59,7 +59,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown));
   gap: 10px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
-h2 { margin: 0; font-size: 17px; }
+h2 { margin: 0; font-size: 18px; font-weight: 500; color: var(--heading); }
 p { margin: 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .actions { justify-content: flex-end; margin-top: 8px; }
 </style>
