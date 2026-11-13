@@ -2,7 +2,7 @@
 
 ## MVP 概觀
 
-Trello Full Stack 是一個看板（Kanban）式的任務管理應用，採用前後端分離架構。使用者透過瀏覽器操作 Vue 3 前端，前端以 HTTP JSON 呼叫 Node.js（Express 5）提供的 REST API，API 透過 Knex（SQL query builder）存取 MariaDB。本機開發用 Docker Compose 管理所有服務。本專案先專注在本機完成全端功能，部署（Hostinger VPS，或改用 Hostinger Cloud Startup）等功能完成後再進行，架構與步驟見 [deployment.md](deployment.md)。
+Trello Full Stack 是一個看板（Kanban）式的任務管理應用，採用前後端分離架構。使用者透過瀏覽器操作 Vue 3 前端，前端以 HTTP JSON 呼叫 Node.js（Express 5）提供的 REST API，API 透過 Knex（SQL query builder）存取 MariaDB。本機開發用 Docker Compose 管理所有服務。本專案先專注在本機完成全端功能，部署（Hostinger Unlimited Web Hosting 的 Node.js Web App）等功能完成後再進行，架構與步驟見 [deployment.md](deployment.md)。
 
 看板固定分成 **待辦、進行中、完成** 三欄，每個使用者只有自己的一個看板。卡片就像待辦事項，有標題與說明，可以新增、就地編輯、刪除，也可以在欄內拖拉排序、拖到其他欄。欄位是固定的，不能新增或改名，所以資料只有兩層：**使用者 → 卡片**，卡片用 `status` 欄位記錄在哪一欄。
 
@@ -24,7 +24,7 @@ flowchart TD
     end
 ```
 
-開發時瀏覽器只連 Vite（`localhost:3020`），`/api` 開頭的請求由 Vite 的 proxy 轉給 `api` 容器。對瀏覽器來說前端和 API 是**同一個來源（same origin）**，所以不需要設定 CORS，Session Cookie 與 CSRF Cookie 也不會有跨網域問題。正式環境由 Caddy 統一提供前端與 API，一樣是同一個來源（見 [deployment.md](deployment.md)）。
+開發時瀏覽器只連 Vite（`localhost:3020`），`/api` 開頭的請求由 Vite 的 proxy 轉給 `api` 容器。對瀏覽器來說前端和 API 是**同一個來源（same origin）**，所以不需要設定 CORS，Session Cookie 與 CSRF Cookie 也不會有跨網域問題。正式環境由 Express 同時提供 Vue 建置檔與 API，一樣是同一個來源（見 [deployment.md](deployment.md)）。
 
 本專案沒有內建的管理後台，開發時直接用 DBeaver 連 `localhost:3308` 查看與修改資料。
 
@@ -36,14 +36,14 @@ flowchart TD
 | 拖拉排序 | `vuedraggable@next`（SortableJS 的 Vue 3 版本） | 拖拉排序的主流做法，支援跨欄拖拉。 |
 | 後端 | Node.js 24 LTS + Express 5（JavaScript，ES Modules） | 前後端同一種語言；Express 5 會自動把 async 函式拋出的錯誤交給錯誤處理 middleware，不用每支都包 `try/catch`。24 是長期支援版本（LTS），維護到 2028 年 4 月。 |
 | 資料庫存取 | Knex（query builder + migration）+ `mysql2` 驅動 | SQL 看得見、交易、`SELECT ... FOR UPDATE`、`UPDATE ... ORDER BY` 寫起來都直接；比完整 ORM 更能看出對 SQL 與資料庫的掌握。 |
-| 資料庫 | MariaDB 11.4 LTS | Hostinger Cloud Startup 只提供 MariaDB／MySQL，本機、VPS、Cloud 用同一種資料庫才能隨時搬家。InnoDB 支援交易、外鍵、列鎖定；管理工具（DBeaver、phpMyAdmin）選擇多。排序在 MariaDB 下的做法見 [database.md](database.md)「排序」。 |
+| 資料庫 | MariaDB 11.4 LTS | Hostinger 的主機方案只提供 MariaDB／MySQL，本機與正式環境用同一種資料庫，才不會本機測過、上線才壞。InnoDB 支援交易、外鍵、列鎖定；管理工具（DBeaver、phpMyAdmin）選擇多。排序在 MariaDB 下的做法見 [database.md](database.md)「排序」。 |
 | 輸入驗證 | Zod | 用宣告的方式描述欄位規則，驗證失敗時拿得到每個欄位的錯誤，方便轉成 API 的錯誤格式。 |
 | 認證 | `express-session` + `express-mysql-session` | Session 存在 MariaDB，瀏覽器只拿到 HTTP-only Cookie，前端不用自己保存 token；API 本身不存狀態。 |
 | CSRF | 自己寫的 middleware（Synchronizer Token） | Express 沒有內建 CSRF 保護。token 存在 Session、用 `crypto` 產生與比對，大約二十行程式，自己寫可以完整理解原理（流程見 [api.md](api.md)「CSRF」）。 |
 | 密碼雜湊 | Argon2（`argon2` 套件） | OWASP 建議的首選演算法。 |
 | 速率限制 | `express-rate-limit` | 登入、註冊防暴力嘗試。 |
 | 安全標頭 | `helmet` | 一次加上常見的安全性 HTTP 標頭。 |
-| 正式環境 | Hostinger VPS KVM 1 + Docker Compose + Caddy | 本機與正式環境用相同的容器；Caddy 自動處理 HTTPS，設定比 Nginx + certbot 簡單。之後可改用 Hostinger Cloud Startup。詳見 [deployment.md](deployment.md)。 |
+| 正式環境 | Hostinger Unlimited Web Hosting（Node.js Web App + MariaDB） | 代管主機直接執行 Node.js，HTTPS、網域、備份、系統更新都由 Hostinger 處理；正式環境不用 Docker。詳見 [deployment.md](deployment.md)。 |
 
 ## 元件職責
 
@@ -148,6 +148,6 @@ trello-fullstack/
 - Vue 3 前端與 REST API 串接。
 - 本機以 Docker Compose 一鍵啟動完整環境。
 
-部署（HTTPS、防火牆、每日資料庫備份）在 MVP 功能完成後進行，見 [deployment.md](deployment.md)。
+部署（Hostinger Web App、HTTPS、資料庫備份）在 MVP 功能完成後進行，見 [deployment.md](deployment.md)。
 
 完整 API 規格見 [api.md](api.md)，資料模型見 [database.md](database.md)，開發步驟見 [roadmap.md](roadmap.md)，部署見 [deployment.md](deployment.md)。

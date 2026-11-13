@@ -12,7 +12,7 @@ import cardsRouter from './routes/cards.js';
 
 const app = express();
 
-// 在反向代理（Caddy）後面時才設定，才拿得到使用者真正的 IP；本機開發維持 0
+// 在反向代理（Hostinger）後面時才設定，才拿得到使用者真正的 IP；本機開發維持 0
 if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy);
 
 app.use(helmet());

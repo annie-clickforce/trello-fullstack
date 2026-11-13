@@ -1,10 +1,10 @@
 # 資料庫設計
 
-本專案使用 MariaDB（本機開發與 VPS 正式環境都用 Docker 的 `mariadb:11.4` 映像檔，11.4 是長期支援版本）。選 MariaDB 是為了讓程式可以直接搬到 **Hostinger Cloud Startup**（只提供 MariaDB／MySQL 相容資料庫，見 [architecture.md](architecture.md)「搬到 Hostinger Cloud Startup」），本機、VPS、Cloud 用同一種資料庫，才不會出現「本機測過、上線才壞」的差異。
+本專案使用 MariaDB（本機開發用 Docker 的 `mariadb:11.4` 映像檔，11.4 是長期支援版本；正式環境用 Hostinger Unlimited Web Hosting 提供的 MariaDB，見 [deployment.md](deployment.md)）。本機與正式環境用同一種資料庫，才不會出現「本機測過、上線才壞」的差異。
 
 資料表由 Knex migration 建立（`backend/migrations/` 裡每個檔案描述一次結構變更，`npx knex migrate:make <名稱>` 產生新檔，`npm run migrate`（即 `knex migrate:latest`）執行）。
 
-- **相容性**：Hostinger Cloud 上的 MariaDB／MySQL 版本不一定跟本機一樣新，所以只使用 MariaDB 10.6 與 MySQL 8.0 都支援的功能（例如**不用** MariaDB 10.7 才有的原生 `UUID` 型別）。
+- **相容性**：Hostinger 提供的 MariaDB／MySQL 版本不一定跟本機一樣新，所以只使用 MariaDB 10.6 與 MySQL 8.0 都支援的功能（例如**不用** MariaDB 10.7 才有的原生 `UUID` 型別）。
 - **連線**：API 與 migration 都從環境變數 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` 讀取連線資訊（跟 hPanel 提供資料庫資訊的方式一致），驅動用 `mysql2`。
 - **編碼**：資料庫與資料表一律 `utf8mb4` + `utf8mb4_unicode_ci`，中文與 emoji 都能正常儲存（MySQL 舊的 `utf8` 只有 3 bytes，存不了 emoji）。引擎用 InnoDB（支援交易、外鍵、列鎖定）。
 - **主鍵**：採用 UUID，存成 `CHAR(36)`（字元集 `ascii`，比 `utf8mb4` 省空間），由程式用 `crypto.randomUUID()` 產生後寫入。MySQL 不支援 `INSERT ... RETURNING`（MariaDB 10.5 起才有），為了兩邊都能用，id 先在程式產生，新增後直接用這個 id 查回完整資料。
@@ -105,6 +105,6 @@ users 1 --- N cards
 
 ## 連線與帳號
 
-MariaDB 容器用 `MARIADB_DATABASE`、`MARIADB_USER`、`MARIADB_PASSWORD`、`MARIADB_ROOT_PASSWORD` 初始化；API 用 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` 連線（在 `docker-compose.yml` 裡由前面幾個值帶入；搬到 Hostinger Cloud 時改填 hPanel 提供的值）。API 使用一般帳號，不用 root。不可將正式環境密碼納入版本控制。
+MariaDB 容器用 `MARIADB_DATABASE`、`MARIADB_USER`、`MARIADB_PASSWORD`、`MARIADB_ROOT_PASSWORD` 初始化；API 用 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` 連線（在 `docker-compose.yml` 裡由前面幾個值帶入；正式環境在 hPanel 的 Web App 環境變數填入 hPanel 提供的資料庫資訊）。API 使用一般帳號，不用 root。不可將正式環境密碼納入版本控制。
 
-VPS 正式環境的資料庫只在 Docker 內部網路，不對外開放；每日備份方式見 [roadmap.md](roadmap.md) 第十階段。
+正式環境的資料庫由 Hostinger 代管，用 phpMyAdmin 管理；遠端連線預設關閉，只在需要時暫時開放自己的 IP。備份與還原方式見 [deployment.md](deployment.md)「維運」。

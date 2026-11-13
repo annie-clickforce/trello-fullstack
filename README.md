@@ -24,7 +24,7 @@
 | 資料庫 | MariaDB 11.4 |
 | 認證 | `express-session`（Session 存在資料庫）、CSRF 防護（Synchronizer Token）、Argon2 密碼雜湊、登入速率限制 |
 | 開發環境 | Docker Compose（前端、API、資料庫各一個容器，一個指令啟動） |
-| 部署 | Hostinger VPS + Docker Compose + Caddy（保留改部署到 Hostinger Cloud Startup 的彈性） |
+| 部署 | Hostinger Unlimited Web Hosting（Node.js Web App + MariaDB，HTTPS 由 Hostinger 代管） |
 
 選型理由見 [docs/architecture.md](docs/architecture.md)「技術選型」。
 
@@ -36,7 +36,7 @@
 | [docs/api.md](docs/api.md) | REST API 規格（認證、CSRF、卡片、錯誤格式） |
 | [docs/database.md](docs/database.md) | 資料表設計與排序（position）的做法 |
 | [docs/roadmap.md](docs/roadmap.md) | 本機開發路線圖 |
-| [docs/deployment.md](docs/deployment.md) | 部署架構與步驟（Hostinger VPS／Cloud Startup） |
+| [docs/deployment.md](docs/deployment.md) | 部署架構與步驟（Hostinger Web App） |
 
 ## 本機開發
 

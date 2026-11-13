@@ -2,122 +2,137 @@
 
 本文件描述把本專案部署上線的架構與步驟。**部署要等 [roadmap.md](roadmap.md) 的本機開發全部完成後才進行**；開發期間只要遵守下方「開發時就要遵守的原則」，之後部署就不需要回頭改程式。
 
-部署目標是自己管理的 **Hostinger VPS（KVM 1）**，並保留改部署到 **Hostinger Cloud Startup** 的彈性（見最後一節）。
+部署目標是 **Hostinger Unlimited Web Hosting**：用 hPanel 的 **Web App**（Node.js 應用程式）執行 Express，資料庫用 Hostinger 提供的 MariaDB，HTTPS 與網域由 Hostinger 代管。正式環境**不使用 Docker Compose，也沒有 Caddy**；Docker 只用在本機開發。
 
 > 標記說明：完成並實際測過的步驟，在步驟前加上 ✅️。
 
 ## 開發時就要遵守的原則
 
-這些原則讓同一份程式碼可以跑在本機、VPS 和 Hostinger Cloud Startup，在本機開發時就要做到：
+這些原則讓同一份程式碼可以跑在本機 Docker 與 Hostinger Web App，在本機開發時就要做到：
 
-- **資料庫統一用 MariaDB**，只使用 MariaDB 10.6 與 MySQL 8.0 都支援的功能（見 [database.md](database.md)「相容性」）。
+- **資料庫統一用 MariaDB**，只使用 MariaDB 10.6 與 MySQL 8.0 都支援的功能（見 [database.md](database.md)「相容性」）。Hostinger 提供的資料庫版本不一定跟本機的 11.4 一樣新。
 - **API 不存狀態**：Session 存在資料庫，不存在記憶體或本機檔案；程式也不寫任何本機檔案（上傳、log 檔都不寫）。
-- **設定全部來自環境變數**：資料庫連線用 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`，監聽的 port 讀 `PORT`；程式碼裡不寫死任何主機（例如 Docker 的 `db`）、密碼。
-- **正式環境才需要的設定也用環境變數開關**：Cookie 的 `secure` 由 `COOKIE_SECURE=true` 打開，Express 的 `trust proxy` 由 `TRUST_PROXY=1` 設定（API 前面有幾層反向代理就填幾）。本機開發不設定（預設關閉），部署時在正式環境的 `.env` 加上，不用改程式。錯誤訊息一律不回傳細節，本機與正式環境相同。
-- **程式碼不依賴 Docker**：Docker 只是執行方式，`npm ci && npm start` 在任何裝了 Node.js 24 的地方都要能跑。
+- **設定全部來自環境變數**：資料庫連線用 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`，監聽的 port 讀 `PORT`；程式碼裡不寫死任何主機（例如 Docker 的 `db`）、密碼。程式不讀 `.env` 檔，本機由 Docker Compose 帶入，正式環境在 hPanel 的 Web App 設定環境變數。
+- **正式環境才需要的設定也用環境變數開關**：Cookie 的 `secure` 由 `COOKIE_SECURE=true` 打開，Express 的 `trust proxy` 由 `TRUST_PROXY=1` 設定（API 前面有幾層反向代理就填幾），Express 提供前端檔案由 `FRONTEND_DIST` 打開。本機開發不設定（預設關閉）。錯誤訊息一律不回傳細節，本機與正式環境相同。
+- **程式碼不依賴 Docker**：`npm ci && npm start` 在任何裝了 Node.js 24 的地方都要能跑。
 - **migration 是獨立指令**（`npm run migrate`），不在 API 啟動時自動執行。
-- **log 一律輸出到 stdout／stderr**，由 Docker 或主機平台收集。
+- **log 一律輸出到 stdout／stderr**，由 Hostinger 的 Web App 收集。
 - **健康檢查**（`GET /api/v1/health`）用來確認 API 與資料庫正常。
 
-## 正式環境架構（Hostinger VPS）
+## 正式環境架構（Hostinger Unlimited Web Hosting）
 
 ```mermaid
 flowchart TD
     User[使用者] --> Browser[瀏覽器]
-    Browser -->|HTTPS 443| Caddy
+    Browser -->|HTTPS 443| Proxy
 
-    subgraph VPS["Hostinger VPS（Ubuntu 24.04）"]
-        subgraph Compose[Docker Compose 正式環境]
-            Caddy[Caddy<br/>HTTPS 憑證 + 反向代理<br/>提供 Vue 靜態檔]
-            API[Node.js + Express]
-            DB[(MariaDB 11.4)]
-
-            Caddy -->|/api/*| API
-            API --> DB
+    subgraph Hostinger["Hostinger Unlimited Web Hosting（hPanel 代管）"]
+        Proxy[Hostinger 網域與 HTTPS<br/>反向代理]
+        subgraph WebApp[Web App（Node.js 24）]
+            API[Express<br/>/api/* → API 路由<br/>其他路徑 → Vue 建置檔]
         end
-        Backup[cron 每日備份<br/>mariadb-dump]
+        DB[(Hostinger MariaDB)]
+        Backup[Hostinger 每日備份]
+
+        Proxy --> API
+        API --> DB
         Backup -.-> DB
     end
 ```
 
-- **Caddy**：唯一對外的服務（只開放 80／443）。自動向 Let's Encrypt 申請與更新 HTTPS 憑證；`/api/*` 轉給 API，其餘路徑提供 Vue 建置後的靜態檔（找不到的路徑回 `index.html`，交給 Vue Router）。
-- **Node.js + Express**：正式環境直接用 `node src/server.js` 執行（開發時才用 `node --watch`）。
-- **MariaDB**：只在 Docker 內部網路，**不對外開放連接埠**。維運時用 `docker compose exec db mariadb -u 帳號 -p` 查看資料。
-- 前端與 API 在同一個網域，不需要 CORS。
+- **Hostinger 網域與 HTTPS**：在 hPanel 綁定網域、開啟 SSL，憑證由 Hostinger 自動申請與更新。請求經過 Hostinger 的反向代理再轉給 Web App，所以要設定 `TRUST_PROXY`。
+- **Web App（Express）**：用 `npm start`（`node src/server.js`）執行，監聽 Hostinger 指定的 `PORT`。設定 `FRONTEND_DIST` 後，Express 同時提供 Vue 建置後的靜態檔：`/api/*` 交給 API 路由，其他路徑先找靜態檔，找不到就回 `index.html`（交給 Vue Router）。
+- **MariaDB**：在 hPanel 的「資料庫」建立資料庫與帳號，用 phpMyAdmin 查看資料。
+- 前端與 API 在同一個網域，不需要 CORS，Session Cookie 與 CSRF Cookie 也不會有跨網域問題。
 
-正式環境的 Docker 服務（`docker-compose.prod.yml`）：
+跟本機開發的對照：
 
-| 服務 | 用途 | 對外連接埠 |
+| 項目 | 本機開發 | 正式環境 |
 | --- | --- | --- |
-| `caddy` | HTTPS、反向代理、Vue 靜態檔（映像檔建置時會先編譯前端） | `80`、`443` |
-| `api` | Node.js + Express（`node src/server.js`） | 不對外 |
-| `db` | MariaDB 11.4 | **不對外** |
+| 執行 API | Docker Compose 的 `api` 容器（`node --watch`） | hPanel 的 Web App（`npm start`） |
+| 前端 | Vite 開發伺服器（`3020`），`/api` 由 Vite proxy 轉給 API | `npm run build` 的建置檔，由 Express 提供（`FRONTEND_DIST`） |
+| 資料庫 | Docker 的 `mariadb:11.4` | Hostinger 提供的 MariaDB，用 phpMyAdmin 管理 |
+| 環境變數 | `.env` + `docker-compose.yml` | hPanel 的 Web App 環境變數設定 |
+| HTTPS、網域 | 無（`localhost`） | Hostinger 代管 |
+| migration | `docker compose exec api npm run migrate` | 見「部署步驟」第 9 步 |
+| 備份 | 不需要 | Hostinger 每日備份 + 定期從 phpMyAdmin 匯出 |
+| 防火牆、系統更新 | 不需要 | Hostinger 代管 |
 
-> ⚠️ Docker 對外開放的連接埠會**繞過 ufw 防火牆**。正式環境的 `db`、`api` 絕對不要寫 `ports:`，只有 `caddy` 可以對外。
+> **已知的單一實例假設**：速率限制用記憶體計數（只有一個 API 行程時是準的）。Web App 只跑一個行程時沒有問題；如果之後同時跑多個實例，要改成共享的 store，否則每個實例各算各的。
 
-部署階段會新增的檔案：`docker-compose.prod.yml`、`Caddyfile`、`deploy/backup.sh`，以及（不進版本控制的）`docs/deployment-info.md`。
+## 部署前要改的程式
+
+1. **Express 提供前端檔案（`FRONTEND_DIST`）**：在 `config.js` 讀取 `FRONTEND_DIST`（Vue 建置結果 `dist/` 的路徑，相對路徑以 `backend/` 為基準）。有設定時，`app.js` 在 API 路由之後、`notFound` 之前加上：
+   - `express.static(FRONTEND_DIST)` 提供 JS、CSS、圖片。
+   - 不是 `/api` 開頭的 `GET` 請求都回 `index.html`，讓重新整理 `/login` 這類前端路由時不會 404。
+   - `/api` 開頭但不存在的路徑仍然交給 `notFound`，回 JSON 格式的 `404`。
+
+   沒設定 `FRONTEND_DIST` 時行為跟現在一樣（本機開發由 Vite 提供前端）。
+2. **建置與啟動指令**：專案是 `frontend/`、`backend/` 兩個資料夾，Web App 需要一組指令同時完成「建置前端」與「安裝後端套件」。在專案根目錄新增 `package.json`：
+   - `build`：`npm ci --prefix frontend && npm run build --prefix frontend && npm ci --omit=dev --prefix backend`
+   - `start`：`npm start --prefix backend`
+   - `engines` 寫 `"node": "24.x"`，讓 Hostinger 自動選 Node.js 24。
+
+   **待確認**：建立 Web App 時，在 Review build settings 找有沒有 Root directory／Application directory／Source directory 這類欄位。有的話可以直接指定 `backend/`（前端建置指令再另外處理）；沒有的話就用上面根目錄 `package.json` 的做法。確認後把實際用的設定寫回這份文件。
 
 ## 部署步驟
 
 > 實際做完後，把遇到的問題與修正補回這份文件，之後的部署照著做。
 
-### 一、購買與基本安全設定
+### 一、方案、網域與資料庫
 
-1. 購買 Hostinger VPS KVM 1，作業系統選 **Ubuntu 24.04 LTS**（如果有內建 Docker 的範本就選它）。在本機產生 SSH 金鑰（`ssh-keygen -t ed25519`），把公鑰加到 hPanel 的 VPS 設定。記下 VPS 的 IP（記在不進版本控制的 `docs/deployment-info.md`，並加入 `.gitignore`）。
-2. 用 root SSH 登入，建立一個一般使用者並給 `sudo` 權限，把 SSH 公鑰也複製給這個使用者。**先開一個新的終端機確認新使用者能用金鑰登入**，再進行下一步。
-3. 修改 SSH 設定：禁止 root 登入（`PermitRootLogin no`）、禁止密碼登入（`PasswordAuthentication no`），重新啟動 SSH。一樣**保留原本的連線不要關**，另開終端機確認還登得進去，避免把自己鎖在外面。
-4. 開啟防火牆 ufw：只允許 `22`（SSH）、`80`、`443`，然後 `ufw enable`。驗證：`ufw status` 只有這三個連接埠。
-5. 開啟自動安全更新（`unattended-upgrades`），讓系統自動安裝安全性修補。
-6. 安裝 Docker（範本已內建就跳過），驗證：`docker run hello-world` 成功。
+1. 確認方案是 **Unlimited Web Hosting**（含 Web Apps）。
+2. 網域：沿用現有網域的子網域（例如 `trello.你的網域`），或另外購買。在 hPanel 把網域加到這個方案，開啟 SSL。
+3. 在 hPanel 的「資料庫」建立 MariaDB 資料庫與一般使用者，密碼用新產生的隨機字串，**不要跟本機開發共用**。記下主機、連接埠、資料庫名稱、帳號、密碼（記在不進版本控制的 `docs/deployment-info.md`）。
+4. 在 phpMyAdmin 確認資料庫的編碼是 `utf8mb4` / `utf8mb4_unicode_ci`，並記下 MariaDB 版本（要 10.6 以上）。
 
-### 二、網域與正式環境設定
+### 二、建立 Web App
 
-7. 到網域的 DNS 設定新增一筆 A 紀錄，指向 VPS 的 IP（例如 `trello.你的網域`）。驗證：`nslookup trello.你的網域` 回傳 VPS 的 IP（DNS 生效可能需要幾分鐘到幾小時）。
-8. 確認 API 的正式環境啟動方式：`NODE_ENV=production`、用 `npm start`（`node src/server.js`，不用 `--watch`）；Dockerfile 的正式環境映像檔用 `npm ci --omit=dev`，只安裝執行需要的套件。
-9. 寫 `Caddyfile`：網域、`/api/*` 反向代理到 `api:3000`，其他路徑提供前端靜態檔並在找不到檔案時回 `index.html`。
-10. 寫 `docker-compose.prod.yml`：`caddy`（只有它開放 `80`／`443`，映像檔建置時先用 Node 編譯前端再複製進去）、`api`（`npm start`，**不開放連接埠**）、`db`（**不開放連接埠**，資料卷保存資料）。Caddy 的憑證資料也要用資料卷保存，否則每次重建都要重新申請。
-11. 在正式環境的 `.env` 加上 `NODE_ENV=production`、`COOKIE_SECURE=true`、`TRUST_PROXY=1`，確認正式環境的 Express 設定都已打開：`app.set('trust proxy', 1)`（API 在 Caddy 後面，要靠這個才拿得到使用者真正的 IP，速率限制才不會把所有人當成同一個 IP 一起擋，也才能判斷原始請求是 HTTPS）、Session Cookie `secure: true`、`httpOnly: true`、`sameSite: 'lax'`；`csrf_token` Cookie 也設 `secure`；錯誤處理 middleware 不回傳錯誤細節。
+5. 完成上方「部署前要改的程式」，push 到 GitHub。在本機先模擬一次：`npm run build` 後，用 `FRONTEND_DIST=../frontend/dist` 啟動 API，瀏覽器開 API 的 port 看得到 Vue 畫面、重新整理 `/login` 不會 404。
+6. 在 hPanel 新增 Web App，選「從 GitHub 匯入」，框架選 **Express**，Node.js 版本選 **24**，在 Review build settings 填入建置指令（`npm run build`）與啟動指令（`npm start`），並確認有沒有根目錄欄位（見「部署前要改的程式」第 2 項）。
+7. 在 **Review build settings → Environment variables** 填入下列環境變數（可以逐筆新增，也可以匯入 `.env` 檔；正式環境的 `.env` 只放在自己電腦，不進版本控制）：
 
-### 三、部署與驗證
+   | 變數 | 值 |
+   | --- | --- |
+   | `NODE_ENV` | `production` |
+   | `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` | 第 3 步 hPanel 提供的資料庫資訊 |
+   | `SESSION_SECRET` | 用 `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` 產生新的 |
+   | `COOKIE_SECURE` | `true` |
+   | `TRUST_PROXY` | `1` |
+   | `FRONTEND_DIST` | `../frontend/dist` |
 
-12. 在 VPS 上 `git clone` 專案，建立正式環境的 `.env`（`SESSION_SECRET` 用 `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` 產生新的、資料庫密碼也另外產生，不要跟開發環境共用）。
-13. `docker compose -f docker-compose.prod.yml up -d --build`，接著執行 `docker compose -f docker-compose.prod.yml exec api npm run migrate`。
-14. 驗證：
-    - `https://trello.你的網域/api/v1/health` 回 `200`，瀏覽器網址列顯示安全的 HTTPS。
-    - `https://trello.你的網域/` 看得到 Vue 畫面。
-    - 從自己的電腦連 VPS 的 `3306`、`3000` 連接埠都會失敗（代表資料庫與 API 沒有直接對外開放）。
-15. 檢查正式環境的回應：`curl -i` 打一個不存在的 API 路徑與一個會出錯的情境，確認回的是 JSON 錯誤格式、沒有錯誤堆疊，也沒有 `X-Powered-By: Express` 標頭。
-16. 在正式網址完整走一次：註冊 → 登入 → 新增卡片 → 編輯 → 拖到別欄 → 重新整理確認順序 → 刪除 → 登出。
+   `PORT` 由 Hostinger 指定，不要自己填死。
+8. 部署 Web App，並把網域指到這個 Web App。
 
-### 四、維運
+### 三、執行 migration
 
-17. 寫 `deploy/backup.sh`：用 `docker compose exec -T db mariadb-dump --single-transaction` 匯出資料庫並壓縮（`--single-transaction` 讓 InnoDB 在不鎖表的情況下匯出一致的快照），檔名帶日期，只保留最近 14 天；用 `crontab` 設定每天凌晨自動執行。驗證：隔天確認有新的備份檔產生。
-18. **實際演練一次還原**：在本機用最新的備份檔還原到一個空的資料庫，確認資料完整。沒有實際還原過的備份，不能算是備份。
-19. 備份檔不能只放在同一台 VPS（VPS 壞掉時會一起不見）：定期下載到自己的電腦，或開啟 Hostinger VPS 的備份／快照功能。
-20. 安全性 HTTP 標頭：在 Caddy 加上 `header` 設定，讓前端靜態檔也有 HSTS、`X-Content-Type-Options`、`Referrer-Policy`、`Content-Security-Policy` 等標頭，部署後用安全檢測工具測一次。
-21. 確認看 log 的方式：`docker compose logs -f api`、`docker compose logs -f caddy`，把常用指令寫進 `docs/operations.md`。
-22. README 補上正式網址。
+9. 用下面其中一種方式執行 `npm run migrate`（`knex migrate:latest`），建立 `users`、`cards`、`sessions` 資料表：
+   - **SSH**：用 hPanel 的 SSH 登入，到 Web App 的 `backend/` 目錄執行。Web App 的環境變數是給執行中的應用程式用的，SSH 終端機不一定讀得到，要在同一行指令帶入 `DB_*` 與 `SESSION_SECRET`（`config.js` 會檢查這幾個變數）。
+   - **從本機連線**：在 hPanel 的「遠端 MySQL」允許自己電腦的 IP，本機用正式環境的 `DB_*` 執行 `npm run migrate`，做完把遠端存取關掉。
 
-## 改部署到 Hostinger Cloud Startup
+   驗證：phpMyAdmin 看得到三張資料表與 `knex_migrations` 的紀錄。之後每次有新的 migration，部署後都要再執行一次。
 
-Cloud Startup 是代管主機：可以直接跑 Node.js 應用程式，資料庫是 MariaDB／MySQL 相容資料庫（連線埠 `3306`，用 phpMyAdmin 管理），但**沒有 PostgreSQL、也不能自己跑 Docker 和 Caddy**。只要開發時遵守上方的原則，就能直接改部署到這裡。
+### 四、驗證
 
-| 項目 | VPS | Cloud Startup |
-| --- | --- | --- |
-| 執行 API | Docker Compose 的 `api` 容器 | hPanel 的 Node.js 應用程式 |
-| 資料庫 | Docker 的 `mariadb:11.4` | Hostinger 提供的 MariaDB／MySQL，用 phpMyAdmin 管理 |
-| 連線設定 | `.env` | 把 hPanel 提供的資料庫資訊填進 `DB_*` 環境變數 |
-| HTTPS | Caddy 自動申請憑證 | Hostinger 代管 |
-| 前端靜態檔 | Caddy 提供 | 沒有 Caddy，改由 Express 提供：設定 `FRONTEND_DIST` 環境變數時，`app.js` 用 `express.static()` 提供 Vue 建置結果，非 `/api` 的路徑都回 `index.html`。這樣前後端仍然同網域，不需要 CORS。 |
-| migration | `docker compose exec api npm run migrate` | 用 SSH／終端機執行 `npm run migrate` |
-| 備份 | 自己寫 cron + `mariadb-dump` | Hostinger 的自動備份，加上定期從 phpMyAdmin 匯出 |
-| 防火牆、系統更新 | 自己設定 ufw、unattended-upgrades | Hostinger 代管 |
+10. `https://trello.你的網域/api/v1/health` 回 `200` 與 `{ "status": "ok" }`，瀏覽器網址列顯示安全的 HTTPS。
+11. `https://trello.你的網域/` 看得到 Vue 畫面；直接開 `https://trello.你的網域/login` 並重新整理，不會 404。
+12. 檢查正式環境的回應：`curl -i` 打一個不存在的 API 路徑（例如 `/api/v1/nope`）與一個會出錯的情境，確認回的是 JSON 錯誤格式、沒有錯誤堆疊，也沒有 `X-Powered-By: Express` 標頭；回應有 `Strict-Transport-Security`、`Content-Security-Policy` 等 helmet 加上的標頭（前端檔案也由 Express 提供，所以一樣有）。
+13. 登入後在瀏覽器開發者工具確認 Session Cookie 與 `csrf_token` Cookie 都有 `Secure`；Console 沒有 Content-Security-Policy 擋掉資源的錯誤。
+14. 確認 `trust proxy` 設定正確：連續登入失敗觸發速率限制後，用另一個網路（例如手機熱點）登入不受影響。如果另一個網路也被擋，代表所有人被當成同一個 IP，要調整 `TRUST_PROXY`。
+15. 在正式網址完整走一次：註冊 → 登入 → 新增卡片 → 編輯 → 拖到別欄 → 重新整理確認順序 → 刪除 → 登出。
 
-`FRONTEND_DIST` 這段等真的要搬到 Cloud 時再實作（範圍很小）。實際的部署方式（從 GitHub 匯入或上傳檔案、怎麼設定環境變數）以 hPanel 當時提供的功能為準，做的時候再補進這一節。
+### 五、維運
 
-> **已知的單一實例假設**：速率限制先用記憶體計數（只有一個 API 行程時是準的）。之後如果同時跑多個實例，要改成共享的 store，否則每個實例各算各的。
+16. 備份：確認 hPanel 的每日自動備份有包含資料庫；另外定期從 phpMyAdmin 匯出資料庫（SQL 檔）下載到自己的電腦。
+17. **實際演練一次還原**：在本機用匯出的 SQL 檔還原到一個空的資料庫，確認資料完整。沒有實際還原過的備份，不能算是備份。
+18. 看 log 的位置：
 
-## 待確認事項
+    | log | 位置 |
+    | --- | --- |
+    | 建置 log（`npm run build` 的輸出） | Website Dashboard → Deployments → 選擇某次部署 |
+    | 執行 log（API 的 stdout，例如 `API listening on port ...`） | Website Dashboard → Runtime logs |
+    | Node.js 原始錯誤（啟動失敗、未處理的例外） | File Manager → `domains/你的網域/hbuilds/current/nodejs/stderr.log` |
 
-- [ ] 購買 Hostinger VPS KVM 1（確認首期與續約價格、付款週期），或直接使用 Cloud Startup。
-- [ ] 網域：沿用現有網域的子網域（例如 `trello.你的網域`），或另外購買。
+    部署後開不起來時，先看建置 log 確認建置成功，再看 `stderr.log`（例如 `config.js` 丟出「缺少必要的環境變數」）。
+19. 更新流程：push 到 GitHub 後在 hPanel 重新部署（或開啟自動部署），有新的 migration 時再執行第 9 步。
+20. README 補上正式網址。

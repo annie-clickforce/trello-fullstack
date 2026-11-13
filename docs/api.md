@@ -26,7 +26,7 @@
 
 `GET /health`
 
-不需要登入。真的對資料庫執行一次 `SELECT 1`，成功回傳 `200 OK` 與 `{ "status": "ok" }`；連不到資料庫時回 `503` 與 `{ "status": "error" }`。部署後（VPS 或 Hostinger Cloud）用來確認 API 與資料庫都正常。
+不需要登入。真的對資料庫執行一次 `SELECT 1`，成功回傳 `200 OK` 與 `{ "status": "ok" }`；連不到資料庫時回 `503` 與 `{ "status": "error" }`。部署到 Hostinger Web App 後用來確認 API 與資料庫都正常。
 
 ## CSRF
 
