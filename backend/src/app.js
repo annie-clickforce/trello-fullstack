@@ -8,6 +8,7 @@ import { verifyCsrf } from './middleware/csrf.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 import healthRouter from './routes/health.js';
 import authRouter from './routes/auth.js';
+import cardsRouter from './routes/cards.js';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(verifyCsrf);
 
 app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/cards', cardsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

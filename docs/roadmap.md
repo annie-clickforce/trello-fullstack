@@ -42,13 +42,13 @@
     - 登入：密碼錯誤與帳號不存在回一樣的 `401` 訊息；不帶 `X-CSRF-Token` 回 `403`；連續第 6 次回 `429`。
     - DBeaver：`users` 有新資料、`password_hash` 是 `$argon2id$` 開頭；`sessions` 表有寫入，登出後該筆被刪除。
 
-## 第四階段：卡片 CRUD
+## ✅️ 第四階段：卡片 CRUD
 
-23. 寫 `cards` 表的 migration（`user_id` 外鍵 `ON DELETE CASCADE`、`status` 用 `enum('todo','doing','done')`、`position` 用 `int unsigned`、唯一約束 `uniq_card_position`，見 [database.md](database.md)；`description` 是 `text`，不能設預設值，新增時由程式寫入空字串），跑 migration 並用 DBeaver 確認。
-24. 寫路徑 id 的 UUID 格式檢查（`router.param()`），不合法直接回 `404`；寫 `findOwnedCard(db, userId, id)`，查詢條件一律帶上 `user_id`。新增時由後端填入 `user_id`（取自 Session），不接受前端傳。
-25. 實作 `GET /cards`（一次查出所有卡片，依 `status` 分組、各欄依 `position` 排序，三個 key 一定都在）與 `POST /cards`（在交易裡鎖定使用者後，把待辦欄的卡片往後挪一格，新卡片放在待辦欄 `position = 0`；往後挪要用 `ORDER BY position DESC`，原因見 [database.md](database.md)「排序」）。
-26. 實作 `PATCH /cards/:id` 修改 `title`／`description`（記得更新 `updated_at`）。
-27. 驗證：連續新增幾張卡片，`GET /cards` 的待辦欄裡最新的在最上面、position 連續；`title` 空白、超過 255 字回 `422`；id 不是 UUID 回 `404`；**用第二個帳號改第一個帳號的卡片回 `404`**，`GET /cards` 也看不到別人的卡片。
+23. ✅️ 寫 `cards` 表的 migration（`user_id` 外鍵 `ON DELETE CASCADE`、`status` 用 `enum('todo','doing','done')`、`position` 用 `int unsigned`、唯一約束 `uniq_card_position`，見 [database.md](database.md)；`description` 是 `text`，不能設預設值，新增時由程式寫入空字串），跑 migration 並用 DBeaver 確認。
+24. ✅️ 寫路徑 id 的 UUID 格式檢查（`router.param()`），不合法直接回 `404`；寫 `findOwnedCard(db, userId, id)`，查詢條件一律帶上 `user_id`。新增時由後端填入 `user_id`（取自 Session），不接受前端傳。
+25. ✅️ 實作 `GET /cards`（一次查出所有卡片，依 `status` 分組、各欄依 `position` 排序，三個 key 一定都在）與 `POST /cards`（在交易裡鎖定使用者後，把待辦欄的卡片往後挪一格，新卡片放在待辦欄 `position = 0`；往後挪要用 `ORDER BY position DESC`，原因見 [database.md](database.md)「排序」）。
+26. ✅️ 實作 `PATCH /cards/:id` 修改 `title`／`description`（記得更新 `updated_at`）。
+27. ✅️ 驗證：連續新增幾張卡片，`GET /cards` 的待辦欄裡最新的在最上面、position 連續；`title` 空白、超過 255 字回 `422`；id 不是 UUID 回 `404`；**用第二個帳號改第一個帳號的卡片回 `404`**，`GET /cards` 也看不到別人的卡片。
 
 ## 第五階段：排序與移動
 
