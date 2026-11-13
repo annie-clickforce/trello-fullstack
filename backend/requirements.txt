@@ -1,0 +1,11 @@
+# 正式環境與開發環境都需要的套件
+# 版本範圍：鎖定大版本，避免升級時意外引入不相容的變更
+
+# Django 5.2 是長期支援版本（LTS），維護到 2028 年 4 月
+Django>=5.2,<5.3
+# Django REST Framework：建立 REST API
+djangorestframework>=3.16,<4
+# PostgreSQL 驅動（psycopg 3）；binary 版本內含編譯好的 libpq，不用另外裝系統套件
+psycopg[binary]>=3.2,<4
+# 讓 Django 可以使用 Argon2 雜湊密碼
+argon2-cffi>=23.1

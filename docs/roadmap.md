@@ -25,8 +25,8 @@
 
 📖 參考：`todo-fullstack/docker-compose.yml`、`todo-fullstack/.env.example`
 
-1. 建立 `trello-fullstack` 資料夾並 `git init`，加上 `.gitignore`（至少排除 `.env`、`__pycache__/`、`.venv/`、`node_modules/`、`dist/`、`staticfiles/`）。在 GitHub 建立新的 repository 並推上去。
-2. 建立後端：`backend/requirements.txt` 寫入 `Django>=5.2,<5.3`、`djangorestframework`、`psycopg[binary]`（PostgreSQL 驅動）、`argon2-cffi`；寫 `backend/Dockerfile`（`python:3.13-slim`，安裝 requirements）。
+1. ✅️ 建立 `trello-fullstack` 資料夾並 `git init`，加上 `.gitignore`（至少排除 `.env`、`__pycache__/`、`.venv/`、`node_modules/`、`dist/`、`staticfiles/`）。在 GitHub 建立新的 repository 並推上去。
+2. ✅️ 建立後端：`backend/requirements.txt` 寫入 `Django>=5.2,<5.3`、`djangorestframework`、`psycopg[binary]`（PostgreSQL 驅動）、`argon2-cffi`；寫 `backend/Dockerfile`（`python:3.13-slim`，安裝 requirements）。
 3. 用容器建立 Django 專案：`django-admin startproject config .`（在 `backend/` 裡執行，`config` 是設定資料夾的名稱）。
 4. 寫 `docker-compose.yml`：`db`（`postgres:17`，對外 port `5433`，加上資料卷）、`api`（`python manage.py runserver 0.0.0.0:8000`，對外 port `3021`）。`settings.py` 的資料庫、`SECRET_KEY`、`DEBUG`、`ALLOWED_HOSTS` 都改成讀環境變數（`os.environ`），根目錄寫 `.env.example`。
 5. 設定時區與語言：`TIME_ZONE = "UTC"`、`USE_TZ = True`。
