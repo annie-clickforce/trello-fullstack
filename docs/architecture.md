@@ -6,6 +6,8 @@ Trello Full Stack 是一個看板（Kanban）式的任務管理應用，採用�
 
 資料的層級是 **看板（Board）→ 列表（List）→ 卡片（Card）**：一個使用者有多個看板，一個看板有多個列表（例如「待辦」「進行中」「完成」），一個列表有多張卡片，卡片可以在列表之間拖拉移動。
 
+> **參考專案**：本專案以先前完成的 [todo-fullstack](https://github.com/annie-clickforce/todo-fullstack)（Vue 3 + Laravel 8 + MySQL，部署在 Hostinger 共享主機）為參考，全新建立、不複製其檔案。認證、資料隔離、Docker Compose、文件格式與部署流程都有可以對照的地方，各階段對應的參考位置見 [roadmap.md](roadmap.md) 的「📖 參考」。
+
 ### 本機開發
 
 ```mermaid
