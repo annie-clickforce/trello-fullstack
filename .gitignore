@@ -2,19 +2,10 @@
 .env
 docs/deployment-info.md
 
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-staticfiles/
-
 # Node / 前端
 node_modules/
 dist/
+coverage/
 
 # 編輯器與系統檔
 .vscode/
