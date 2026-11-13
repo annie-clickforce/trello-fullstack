@@ -6,7 +6,7 @@
 - 資料格式：請求與回應皆使用 JSON。有 body 的請求（`POST`／`PATCH`）只接受 `Content-Type: application/json`，其他格式回 `415`；JSON 本身格式錯誤（無法解析）回 `400`。
 - 認證：登入後以 HTTP-only Cookie 保存 Session；需要登入的端點必須帶上有效的 Session Cookie，否則回 `401`。
 - CSRF：所有 `POST`／`PATCH`／`DELETE` 請求都必須在 `X-CSRF-Token` header 帶上 `csrf_token` Cookie 的值，否則回 `403`（見下方「CSRF」）。
-- 日期格式：ISO 8601 UTC 字串，固定到毫秒、以 `Z` 結尾，例如 `2026-11-13T12:00:00.123Z`（就是 JavaScript `Date` 的 `toISOString()` 格式，`pg` 讀出的 `timestamptz` 是 `Date` 物件，`JSON.stringify` 會自動輸出這個格式）。
+- 日期格式：ISO 8601 UTC 字串，固定到毫秒、以 `Z` 結尾，例如 `2026-11-13T12:00:00.123Z`（就是 JavaScript `Date` 的 `toISOString()` 格式：資料庫的 `DATETIME(3)` 以 UTC 儲存，`mysql2` 設定 `timezone: 'Z'` 後讀出來是 `Date` 物件，`JSON.stringify` 會自動輸出這個格式）。
 - 欄位命名：JSON 一律使用 `snake_case`（例如 `list_id`、`created_at`），與資料庫欄位名稱一致，不另外轉換（JavaScript 程式裡的變數仍用 `camelCase`，只有資料庫欄位與 JSON 欄位用 `snake_case`）。
 
 成功回應使用 `2xx` 狀態碼並直接回傳資源資料；失敗回應統一使用下列格式：
@@ -26,7 +26,7 @@
 
 `GET /health`
 
-不需要登入。真的對資料庫執行一次 `SELECT 1`，成功回傳 `200 OK` 與 `{ "status": "ok" }`；連不到資料庫時回 `503` 與 `{ "status": "error" }`。部署後用來確認 API 與資料庫都正常，之後搬到雲端時也可以直接當作容器平台的健康檢查。
+不需要登入。真的對資料庫執行一次 `SELECT 1`，成功回傳 `200 OK` 與 `{ "status": "ok" }`；連不到資料庫時回 `503` 與 `{ "status": "error" }`。部署後（VPS 或 Hostinger Cloud）用來確認 API 與資料庫都正常。
 
 ## CSRF
 
@@ -62,7 +62,7 @@
 
 驗證規則：`name` 必填、最多 100 字；`email` 必填、格式正確、最多 255 字、不可重複（去除前後空白並轉小寫後比對）；`password` 至少 8 個、最多 128 個字元，不可全是數字，不可與 email 相同。
 
-email 重複的檢查除了先查一次，還要處理資料庫唯一約束的錯誤（PostgreSQL 錯誤碼 `23505`）：兩個請求同時註冊同一個 email 時，先查詢的檢查兩邊都會通過，最後由唯一約束擋下其中一個，這時也要回 `422`，而不是 `500`。
+email 重複的檢查除了先查一次，還要處理資料庫唯一約束的錯誤（MariaDB／MySQL 錯誤碼 `ER_DUP_ENTRY`，errno `1062`）：兩個請求同時註冊同一個 email 時，先查詢的檢查兩邊都會通過，最後由唯一約束擋下其中一個，這時也要回 `422`，而不是 `500`。
 
 ### 登入
 
@@ -106,7 +106,7 @@ email 重複的檢查除了先查一次，還要處理資料庫唯一約束的�
 
 - 以下所有端點都需要登入。
 - 使用者只能存取自己的看板，以及自己看板底下的列表與卡片。**資源不存在，或存在但不屬於目前使用者，一律回 `404 Not Found`**（不回 `403`）。
-- 路徑中的 id 不是合法 UUID 格式時回 `404`。要在查資料庫**之前**先檢查格式（例如用 `router.param()` 統一處理），否則把 `abc` 拿去比對 `uuid` 欄位，PostgreSQL 會丟出型別錯誤，變成 `500`。
+- 路徑中的 id 不是合法 UUID 格式時回 `404`。在查資料庫**之前**先檢查格式（例如用 `router.param()` 統一處理），格式不對的 id 不可能存在，不用浪費一次查詢。
 - `position` 是從 `0` 開始的索引，規則見 [database.md](database.md)「排序（position）」。新增時一律放在最後面；超出範圍的值會自動夾在合法範圍內。
 - `title` 會先去除前後空白再驗證，去除後為空字串視為未填。
 
