@@ -1,5 +1,7 @@
 # Trello Full Stack
 
+🔗 線上網站：<https://trello.annie-clickforce.xyz>　<sub>2026-11-13 上線</sub>
+
 個人用的看板（Kanban）任務管理工具。註冊登入後就是自己的看板，分成「待辦」「進行中」「完成」三欄，把要做的事寫成卡片，用拖拉的方式在欄內排序、移到下一個階段。
 
 ## 功能
@@ -12,7 +14,7 @@
 - 拖拉卡片調整順序，或拖到其他欄；順序立即儲存，重新整理後維持不變
 - 每個帳號的卡片只有自己看得到，不提供分享
 
-> 本機開發已完成，尚未部署上線；部署步驟見 [docs/deployment.md](docs/deployment.md)。
+> 已部署到 Hostinger（Node.js Web App + MariaDB，HTTPS），push 到 `main` 會自動重新部署；部署步驟見 [docs/deployment.md](docs/deployment.md)。
 
 ## 技術選型
 

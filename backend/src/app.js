@@ -16,7 +16,20 @@ const app = express();
 // 在反向代理（Hostinger）後面時才設定，才拿得到使用者真正的 IP；本機開發維持 0
 if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy);
 
-app.use(helmet());
+// helmet 預設值之外再收緊：禁止被任何網站（包含自己）用 iframe 嵌入，防 clickjacking；
+// 沒有用外部字型與外部 CSS，樣式、字型只允許自己的網域（style 保留 inline，給 Vue 與拖拉套件設定的樣式）
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'font-src': ["'self'"],
+        'frame-ancestors': ["'none'"],
+      },
+    },
+    frameguard: { action: 'deny' },
+  }),
+);
 app.use(requireJson);
 app.use(express.json());
 app.use(sessionMiddleware);
