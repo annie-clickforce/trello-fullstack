@@ -42,64 +42,52 @@
     - 登入：密碼錯誤與帳號不存在回一樣的 `401` 訊息；不帶 `X-CSRF-Token` 回 `403`；連續第 6 次回 `429`。
     - DBeaver：`users` 有新資料、`password_hash` 是 `$argon2id$` 開頭；`sessions` 表有寫入，登出後該筆被刪除。
 
-## 第四階段：看板 CRUD
+## 第四階段：卡片 CRUD
 
-23. 寫 `boards` 表的 migration（`owner_id` 外鍵 `ON DELETE CASCADE`、`(owner_id, created_at)` 索引），跑 migration 並用 DBeaver 確認。
-24. 寫路徑 id 的 UUID 格式檢查（`router.param()`），不合法直接回 `404`；寫 `findOwnedBoard(db, userId, id)`，查詢條件一律帶上 `owner_id`。建立時由後端填入 `owner_id`（取自 Session），不接受前端傳。
-25. 實作 `GET /boards`、`POST /boards`、`GET /boards/:id`（先只回看板本身）、`PATCH /boards/:id`（記得更新 `updated_at`）、`DELETE /boards/:id`。
-26. 驗證：每支端點的成功情境；`title` 空白、超過 100 字回 `422`；id 不是 UUID 回 `404`；**用第二個帳號查、改、刪第一個帳號的看板都回 `404`**；`GET /boards` 只會看到自己的看板。
+23. 寫 `cards` 表的 migration（`user_id` 外鍵 `ON DELETE CASCADE`、`status` 用 `enum('todo','doing','done')`、`position` 用 `int unsigned`、唯一約束 `uniq_card_position`，見 [database.md](database.md)；`description` 是 `text`，不能設預設值，新增時由程式寫入空字串），跑 migration 並用 DBeaver 確認。
+24. 寫路徑 id 的 UUID 格式檢查（`router.param()`），不合法直接回 `404`；寫 `findOwnedCard(db, userId, id)`，查詢條件一律帶上 `user_id`。新增時由後端填入 `user_id`（取自 Session），不接受前端傳。
+25. 實作 `GET /cards`（一次查出所有卡片，依 `status` 分組、各欄依 `position` 排序，三個 key 一定都在）與 `POST /cards`（在交易裡鎖定使用者後，把待辦欄的卡片往後挪一格，新卡片放在待辦欄 `position = 0`；往後挪要用 `ORDER BY position DESC`，原因見 [database.md](database.md)「排序」）。
+26. 實作 `PATCH /cards/:id` 修改 `title`／`description`（記得更新 `updated_at`）。
+27. 驗證：連續新增幾張卡片，`GET /cards` 的待辦欄裡最新的在最上面、position 連續；`title` 空白、超過 255 字回 `422`；id 不是 UUID 回 `404`；**用第二個帳號改第一個帳號的卡片回 `404`**，`GET /cards` 也看不到別人的卡片。
 
-## 第五階段：列表 CRUD 與排序
+## 第五階段：排序與移動
 
-27. 寫 `lists` 表的 migration（`position` 用 `int unsigned`、唯一約束 `uniq_list_position`，見 [database.md](database.md)），跑 migration 後用 DBeaver 確認約束有建立。再用 SQL 手動試一次：對 position 0、1、2 執行不帶 `ORDER BY` 的 `UPDATE lists SET position = position + 1`，確認會撞到唯一約束失敗，加上 `ORDER BY position DESC` 就會成功（理解為什麼排序要指定更新順序）。
-28. 寫 `src/ordering.js`：一個「把某個項目移到新位置」的函式（處理夾範圍、暫停到最後一號、補空位、騰空位，步驟見 [database.md](database.md)「移動步驟」），以及「刪除後往前補」的函式。函式接收交易物件 `trx`、資料表名稱與父層條件（例如 `{ board_id }`），給列表與卡片共用；每個 `increment`／`decrement` 都要指定 `orderBy`。
-29. 實作 `POST /boards/:board_id/lists`（看板要屬於自己，否則 `404`；在交易裡鎖定看板後，position = 目前列表數量）。
-30. 實作 `PATCH /lists/:id`（改名稱、調整 position；調整時在 `db.transaction()` 裡先用 `forUpdate()` 鎖定看板）與 `DELETE /lists/:id`。
-31. 補上 `GET /boards/:id` 回傳 `lists`（依 position 排序）。
-32. 驗證：所有列表端點用第二個帳號存取都回 `404`。建 4 個列表後試各種移動：往前移、往後移、移到原位置、移到最前面、移到最後面、position 超出範圍被夾住、刪除中間的列表；每次都用 DBeaver 確認 position 是連續的 0～n-1，且跟 API 回傳的順序一致。
+28. 先用 SQL 手動試一次：在同一欄放 position 0、1、2 三張卡片，執行不帶 `ORDER BY` 的 `UPDATE cards SET position = position + 1 WHERE ...`，確認會撞到唯一約束失敗，加上 `ORDER BY position DESC` 就會成功（理解為什麼排序要指定更新順序）。
+29. 寫 `src/ordering.js`：「移動卡片」與「刪除後往前補」兩個函式（步驟見 [database.md](database.md)「移動步驟」），函式接收交易物件 `trx`；每個 `increment`／`decrement` 都要指定 `orderBy`。
+30. `PATCH /cards/:id` 加上同一欄內調整 `position`。
+31. `PATCH /cards/:id` 加上移到另一欄（`status` + `position`），交易內同時處理原欄與目標欄的 position。
+32. 實作 `DELETE /cards/:id`（刪除後同一欄後面的卡片往前補）。
+33. 驗證：用第二個帳號移動、刪除第一個帳號的卡片都回 `404`；`status` 不是三個值之一回 `422`。每欄各放 3 張卡片，試各種移動：同一欄往前、往後、移到原位置、移到最前面、最後面、position 超出範圍被夾住；跨欄移到最前面、中間、最後面、移到空的欄；刪除中間的卡片。每次都用 DBeaver 確認每一欄的 position 都是連續的 0～n-1，且跟 `GET /cards` 回傳的順序一致。
 
-## 第六階段：卡片 CRUD 與移動
-
-33. 寫 `cards` 表的 migration（同樣的唯一約束 `uniq_card_position`；`description` 是 `text`，不能設預設值，新增時由程式寫入空字串），跑 migration。
-34. 實作 `POST /lists/:list_id/cards`（擁有權要追到看板）與 `GET /cards/:id`。
-35. 實作 `PATCH /cards/:id` 修改 `title`／`description`，以及同列表內調整 `position`（用 `ordering.js`）。
-36. 加上跨列表移動（`list_id` + `position`）：確認目標列表跟卡片在同一個看板（否則 `422`），交易內同時處理原列表與目標列表的 position。
-37. 實作 `DELETE /cards/:id`。
-38. 補上 `GET /boards/:id` 回傳每個列表的 `cards`：固定三次查詢（看板、列表、`whereIn` 查所有卡片），在程式裡分組，避免 N+1 查詢。驗證：開發時用 Knex 的 `query` 事件（`db.on('query', ...)`）把 SQL 印到 log，確認不管有幾個列表都只有三句查詢。
-39. 驗證：所有卡片端點用第二個帳號存取都回 `404`；把自己的卡片移到別人的列表回 `422`；兩個列表各 3 張卡片，試各種跨列表移動，用 DBeaver 確認兩邊的 position 都連續；刪除卡片後後面的往前補。
-
-## 第七階段：前端
+## 第六階段：前端
 
 先把版面／路由骨架建好（這時候先不呼叫 API，用假資料），確認整體動線沒問題後，再依序串上 API，最後才做拖拉。
 
-### 7-1　版面與路由骨架
+### 6-1　版面與路由骨架
 
-40. 建立註冊頁、登入頁版面。
-41. 建立看板清單頁版面：看板卡片格狀排列、「新增看板」按鈕。
-42. 建立看板頁版面：橫向排列的列表，每個列表裡有卡片、「新增卡片」按鈕，最右邊有「新增列表」；用假資料。
-43. 建立卡片詳細內容的彈出視窗（modal）：可以編輯標題、說明，有刪除按鈕。
-44. 建立前端路由：`/register`、`/login`、`/boards`、`/boards/:id`。
+34. 建立註冊頁、登入頁版面。
+35. 建立看板頁版面：頂部顯示「我的看板」、使用者名稱與「登出」；下面一個新增表單（標題、說明、「新增」按鈕）；再下面橫向並排「待辦」「進行中」「完成」三欄，欄名旁顯示卡片數，卡片顯示標題與說明，有「編輯」「刪除」按鈕；空的欄顯示「把卡片拖到這裡」。先用假資料；窄螢幕時三欄改成上下排列。
+36. 卡片的編輯狀態：按「編輯」後，卡片上的標題與說明直接變成輸入框，有「儲存」「取消」按鈕（就地編輯，不開新視窗）。按「刪除」時跳出確認視窗（「刪除這張卡片？」，顯示卡片標題，有「取消」與「刪除」），按「刪除」才真的刪除；按「取消」、點視窗外面或按 Esc 關閉。
+37. 建立前端路由：`/register`、`/login`、`/`（看板頁）。
 
-### 7-2　串接 API
+### 6-2　串接 API
 
-45. 寫 `src/api.js`：包裝 `fetch`（相對路徑 `/api/v1`、`Content-Type: application/json`）；非 GET 請求前確認有 `csrf_token` Cookie（沒有就先打 `GET /auth/csrf`），**每次都重新讀取** Cookie 放進 `X-CSRF-Token` header；把 [api.md](api.md) 的錯誤格式轉成前端好處理的形式；收到 `401` 時導向登入頁。
-46. 註冊、登入、登出串接 API；加上路由守衛（用 `GET /auth/me` 判斷是否登入）。
-47. 看板清單頁串接 `GET /boards`、`POST /boards`；看板的改名、刪除。
-48. 看板頁串接 `GET /boards/:id`，把假資料換成真資料。
-49. 串接新增／改名／刪除列表、新增卡片、卡片 modal 的編輯與刪除。
+38. 寫 `src/api.js`：包裝 `fetch`（相對路徑 `/api/v1`、`Content-Type: application/json`）；非 GET 請求前確認有 `csrf_token` Cookie（沒有就先打 `GET /auth/csrf`），**每次都重新讀取** Cookie 放進 `X-CSRF-Token` header；把 [api.md](api.md) 的錯誤格式轉成前端好處理的形式；收到 `401` 時導向登入頁。
+39. 註冊、登入、登出串接 API；加上路由守衛（用 `GET /auth/me` 判斷是否登入）。
+40. 看板頁串接 `GET /cards`，把假資料換成真資料。
+41. 新增表單串接 `POST /cards`（新卡片出現在待辦欄最上面），確認視窗的「刪除」串接 `DELETE /cards/:id`。
+42. 就地編輯串接 `PATCH /cards/:id`（送出 `title`、`description`）；欄位驗證失敗時把錯誤訊息顯示在輸入框旁邊。
 
-### 7-3　拖拉
+### 6-3　拖拉
 
-50. 安裝 `vuedraggable@next`（Vue 3 版本），先做**列表**的左右拖拉排序，放開時呼叫 `PATCH /lists/:id` 帶新的 `position`。
-51. 做**卡片**在同一個列表內上下拖拉，放開時呼叫 `PATCH /cards/:id`。
-52. 做**卡片跨列表**拖拉（`vuedraggable` 的 `group` 設定），放開時帶 `list_id` + `position`。
-53. 拖拉採「樂觀更新」：畫面先變，API 失敗時重新載入 `GET /boards/:id` 還原，並顯示錯誤訊息。驗證：拖完重新整理頁面，順序要跟拖完時一樣。
+43. 安裝 `vuedraggable@next`（Vue 3 版本），先做卡片在同一欄內上下拖拉，放開時呼叫 `PATCH /cards/:id` 帶新的 `position`。
+44. 做卡片跨欄拖拉（`vuedraggable` 的 `group` 設定），放開時帶 `status` + `position`。
+45. 拖拉採「樂觀更新」：畫面先變，API 失敗時重新載入 `GET /cards` 還原，並顯示錯誤訊息。驗證：拖完重新整理頁面，順序要跟拖完時一樣。
 
-## 第八階段：本機收尾
+## 第七階段：本機收尾
 
-54. 在本機瀏覽器完整走一次：註冊 → 登入 → 建看板 → 建列表 → 建卡片 → 拖拉 → 重新整理確認順序 → 登出；再用第二個帳號登入，確認看不到第一個帳號的看板。
-55. 開兩個分頁同時操作同一個看板（例如一邊拖卡片、一邊新增卡片），重新整理後確認順序正確、沒有錯誤。
-56. 執行 `npm audit`（前後端各一次），處理已知有漏洞的套件。
-57. 補完 `README.md`：本機啟動方式（`.env` 怎麼建、`docker compose up`、`npm run migrate`），並更新 `CLAUDE.md`。
+46. 在本機瀏覽器完整走一次：註冊 → 登入 → 新增卡片 → 編輯 → 拖到別欄 → 重新整理確認順序 → 刪除 → 登出；再用第二個帳號登入，確認看不到第一個帳號的卡片。
+47. 執行 `npm audit`（前後端各一次），處理已知有漏洞的套件。
+48. 補完 `README.md`：本機啟動方式（`.env` 怎麼建、`docker compose up`、`npm run migrate`），並更新 `CLAUDE.md`。
 
 完成後即可照 [deployment.md](deployment.md) 部署上線。

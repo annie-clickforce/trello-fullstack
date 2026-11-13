@@ -4,7 +4,7 @@
 
 Trello Full Stack 是一個看板（Kanban）式的任務管理應用，採用前後端分離架構。使用者透過瀏覽器操作 Vue 3 前端，前端以 HTTP JSON 呼叫 Node.js（Express 5）提供的 REST API，API 透過 Knex（SQL query builder）存取 MariaDB。本機開發用 Docker Compose 管理所有服務。本專案先專注在本機完成全端功能，部署（Hostinger VPS，或改用 Hostinger Cloud Startup）等功能完成後再進行，架構與步驟見 [deployment.md](deployment.md)。
 
-資料的層級是 **看板（Board）→ 列表（List）→ 卡片（Card）**：一個使用者有多個看板，一個看板有多個列表（例如「待辦」「進行中」「完成」），一個列表有多張卡片，卡片可以在列表之間拖拉移動。
+看板固定分成 **待辦、進行中、完成** 三欄，每個使用者只有自己的一個看板。卡片就像待辦事項，有標題與說明，可以新增、就地編輯、刪除，也可以在欄內拖拉排序、拖到其他欄。欄位是固定的，不能新增或改名，所以資料只有兩層：**使用者 → 卡片**，卡片用 `status` 欄位記錄在哪一欄。
 
 ### 本機開發
 
@@ -33,7 +33,7 @@ flowchart TD
 | 項目 | 選擇 | 理由 |
 | --- | --- | --- |
 | 前端 | Vue 3 + Vite + Vue Router | 輕量、上手快，單頁應用的路由與狀態管理都很直接。 |
-| 拖拉排序 | `vuedraggable@next`（SortableJS 的 Vue 3 版本） | 列表、卡片拖拉的主流做法，支援跨容器拖拉。 |
+| 拖拉排序 | `vuedraggable@next`（SortableJS 的 Vue 3 版本） | 拖拉排序的主流做法，支援跨欄拖拉。 |
 | 後端 | Node.js 24 LTS + Express 5（JavaScript，ES Modules） | 前後端同一種語言；Express 5 會自動把 async 函式拋出的錯誤交給錯誤處理 middleware，不用每支都包 `try/catch`。24 是長期支援版本（LTS），維護到 2028 年 4 月。 |
 | 資料庫存取 | Knex（query builder + migration）+ `mysql2` 驅動 | SQL 看得見、交易、`SELECT ... FOR UPDATE`、`UPDATE ... ORDER BY` 寫起來都直接；比完整 ORM 更能看出對 SQL 與資料庫的掌握。 |
 | 資料庫 | MariaDB 11.4 LTS | Hostinger Cloud Startup 只提供 MariaDB／MySQL，本機、VPS、Cloud 用同一種資料庫才能隨時搬家。InnoDB 支援交易、外鍵、列鎖定；管理工具（DBeaver、phpMyAdmin）選擇多。排序在 MariaDB 下的做法見 [database.md](database.md)「排序」。 |
@@ -49,16 +49,16 @@ flowchart TD
 
 | 元件 | 職責 |
 | --- | --- |
-| Vue 3 + Vite | 顯示看板清單與看板內容，提供看板、列表、卡片的新增、編輯、刪除，以及拖拉排序與跨列表移動卡片。 |
-| Node.js + Express | 提供 REST API、驗證請求資料、處理認證與 CSRF，並確保每個請求只能存取自己的看板資料。 |
-| MariaDB | 保存使用者、看板、列表、卡片與 Session。 |
+| Vue 3 + Vite | 顯示三欄看板，提供卡片的新增、就地編輯、刪除（含確認視窗），以及拖拉排序與跨欄移動。 |
+| Node.js + Express | 提供 REST API、驗證請求資料、處理認證與 CSRF，並確保每個請求只能存取自己的卡片。 |
+| MariaDB | 保存使用者、卡片與 Session。 |
 | Docker Compose | 統一管理本機開發的各服務與服務間的連線設定。 |
 
 ## API 內部流程
 
 請求依序經過全域 middleware（安全標頭、JSON 解析、Session、CSRF），再由路由對應到處理函式。需要登入的路由先經過 `requireAuth` middleware；處理函式用 Zod schema 驗證輸入，用 Knex 存取資料庫，最後把資料轉成 API 的回應格式。任何地方拋出的錯誤都交給最後的錯誤處理 middleware，統一轉成 [api.md](api.md) 的錯誤格式。
 
-目前以簡化結構實作（Route → 處理函式 → Zod schema → Knex），不另外拆 Service／Repository 層；唯一的例外是排序邏輯（列表與卡片共用、邏輯最容易出錯），獨立放在 `src/ordering.js`。
+目前以簡化結構實作（Route → 處理函式 → Zod schema → Knex），不另外拆 Service／Repository 層；唯一的例外是排序邏輯（新增、移動、刪除都會用到，邏輯最容易出錯），獨立放在 `src/ordering.js`。
 
 ```mermaid
 flowchart LR
@@ -74,13 +74,7 @@ flowchart LR
 
 ### 擁有權檢查
 
-列表、卡片本身不存 `user_id`，擁有權要沿著層級往上追到看板，所以查詢列表、卡片時一律 `JOIN` 到 `boards` 並加上擁有者條件：
-
-- 看板：`WHERE boards.owner_id = :userId`
-- 列表：`lists JOIN boards ON boards.id = lists.board_id WHERE boards.owner_id = :userId`
-- 卡片：`cards JOIN lists ... JOIN boards ... WHERE boards.owner_id = :userId`
-
-這些查詢包成幾個共用函式（例如 `findOwnedBoard(db, userId, id)`、`findOwnedList(...)`、`findOwnedCard(...)`），**查詢條件一開始就帶上擁有者**，查不到就回 `404`。不要「先查出資料再判斷是不是自己的」，避免漏判；也不要回 `403`，以免洩漏「這筆資料存在」。每支端點都要確認用另一個帳號存取會回 `404`。
+每張卡片都存了 `user_id`，所以所有卡片查詢都直接加上 `WHERE user_id = :userId`（`userId` 取自 Session）。查單張卡片的邏輯包成 `findOwnedCard(db, userId, id)`，**查詢條件一開始就帶上擁有者**，查不到就回 `404`。不要「先查出資料再判斷是不是自己的」，避免漏判；也不要回 `403`，以免洩漏「這筆資料存在」。每支端點都要確認用另一個帳號存取會回 `404`。
 
 ## 卡片移動流程
 
@@ -91,18 +85,18 @@ sequenceDiagram
     participant API as Express API
     participant DB as MariaDB
 
-    User->>Web: 把卡片拖到另一個列表的第 2 個位置
+    User->>Web: 把卡片從「待辦」拖到「進行中」的第 2 個位置
     Web->>Web: 先更新畫面（樂觀更新）
-    Web->>API: PATCH /cards/:id { list_id, position: 1 }
-    API->>DB: 確認卡片與目標列表屬於目前使用者的同一個看板
-    API->>DB: 交易開始，鎖定該看板（SELECT ... FOR UPDATE）
-    API->>DB: 原列表後面的卡片 position - 1（由小到大更新）<br/>目標列表 position >= 1 的卡片 + 1（由大到小更新）<br/>寫入新的 list_id、position
+    Web->>API: PATCH /cards/:id { status: "doing", position: 1 }
+    API->>DB: 交易開始，鎖定目前使用者（SELECT ... FOR UPDATE）
+    API->>DB: 確認卡片屬於目前使用者
+    API->>DB: 「待辦」後面的卡片 position - 1（由小到大更新）<br/>「進行中」position >= 1 的卡片 + 1（由大到小更新）<br/>寫入新的 status、position
     API->>DB: 交易提交
     API-->>Web: 回傳更新後的卡片
-    Web-->>User: 失敗時重新載入看板還原畫面
+    Web-->>User: 失敗時重新載入卡片還原畫面
 ```
 
-鎖定看板是為了避免兩個請求（例如兩個分頁）同時移動同一個看板裡的卡片，讓 position 算錯；更新時指定順序，是因為 MariaDB 每更新一列就檢查唯一約束。排序規則詳見 [database.md](database.md)「排序（position）」。
+鎖定使用者是為了避免兩個請求（例如兩個分頁）同時移動同一個人的卡片，讓 position 算錯；更新時指定順序，是因為 MariaDB 每更新一列就檢查唯一約束。排序規則詳見 [database.md](database.md)「排序（position）」。
 
 ## 目錄結構（規劃）
 
@@ -121,9 +115,8 @@ trello-fullstack/
 │  │  ├─ config.js             # 讀取並檢查環境變數
 │  │  ├─ db.js                 # Knex 實例
 │  │  ├─ middleware/           # requireAuth、CSRF、Content-Type 檢查、錯誤處理
-│  │  ├─ routes/               # health、auth、boards、lists、cards
+│  │  ├─ routes/               # health、auth、cards
 │  │  ├─ schemas/              # Zod schema
-│  │  ├─ ownership.js          # findOwnedBoard／findOwnedList／findOwnedCard
 │  │  └─ ordering.js           # 排序邏輯
 ├─ frontend/
 │  ├─ Dockerfile
@@ -148,11 +141,11 @@ trello-fullstack/
 
 ## MVP 範圍
 
-- 註冊、登入、登出，以及使用者權限（只能存取自己的看板與底下的列表、卡片）。
-- 看板 CRUD。
-- 列表 CRUD 與排序。
-- 卡片 CRUD、排序，以及在同一個看板內跨列表移動。
-- Vue 3 前端與 REST API 串接，包含拖拉操作。
+- 註冊、登入、登出，以及使用者權限（只能存取自己的卡片）。
+- 固定三欄（待辦、進行中、完成）的看板。
+- 從看板上方的表單新增卡片（放進「待辦」最上面），卡片可以就地編輯（標題、說明），刪除前跳出確認視窗。
+- 卡片在欄內拖拉排序、拖到其他欄。
+- Vue 3 前端與 REST API 串接。
 - 本機以 Docker Compose 一鍵啟動完整環境。
 
 部署（HTTPS、防火牆、每日資料庫備份）在 MVP 功能完成後進行，見 [deployment.md](deployment.md)。
