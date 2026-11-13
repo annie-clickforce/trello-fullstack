@@ -5,13 +5,14 @@
 ## 功能
 
 - 註冊、登入、登出
+- 看板上方顯示待辦／進行中的數量與完成進度
 - 從看板上方新增卡片（標題、說明），新卡片放進「待辦」最上面
 - 卡片直接在看板上編輯，不用另開頁面
 - 刪除前跳出確認視窗
 - 拖拉卡片調整順序，或拖到其他欄；順序立即儲存，重新整理後維持不變
 - 每個帳號的卡片只有自己看得到，不提供分享
 
-> 目前開發中，進度見 [docs/roadmap.md](docs/roadmap.md)。
+> 本機開發已完成，尚未部署上線；部署步驟見 [docs/deployment.md](docs/deployment.md)。
 
 ## 技術選型
 
@@ -34,7 +35,7 @@
 | [docs/architecture.md](docs/architecture.md) | 系統架構、技術選型、擁有權檢查、目錄結構、本機 Docker 服務 |
 | [docs/api.md](docs/api.md) | REST API 規格（認證、CSRF、卡片、錯誤格式） |
 | [docs/database.md](docs/database.md) | 資料表設計與排序（position）的做法 |
-| [docs/roadmap.md](docs/roadmap.md) | 本機開發路線圖與目前進度 |
+| [docs/roadmap.md](docs/roadmap.md) | 本機開發路線圖 |
 | [docs/deployment.md](docs/deployment.md) | 部署架構與步驟（Hostinger VPS／Cloud Startup） |
 
 ## 本機開發
@@ -47,4 +48,44 @@
 | `api` | Node.js + Express | `3021` |
 | `db` | MariaDB 11.4 | `3308`（給 DBeaver 等資料庫工具連線） |
 
-詳細的啟動步驟（建立 `.env`、`docker compose up`、執行 migration）將於專案初始化完成後補上。
+### 第一次啟動
+
+1. 建立環境變數檔，並修改裡面的密碼與 `SESSION_SECRET`：
+
+   ```bash
+   cp .env.example .env
+   # 產生一組隨機的 SESSION_SECRET
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+2. 建置並啟動所有服務：
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. 建立資料表（第一次啟動，或之後有新的 migration 時執行）：
+
+   ```bash
+   docker compose exec api npm run migrate
+   ```
+
+4. 瀏覽器開 <http://localhost:3020>，註冊一個帳號後登入。
+
+確認 API 正常：<http://localhost:3021/api/v1/health> 會回傳 `{"status":"ok"}`。
+
+### 常用指令
+
+| 用途 | 指令 |
+| --- | --- |
+| 查看 API 的 log | `docker compose logs -f api` |
+| 改完後端程式後重新啟動 API | `docker compose restart api` |
+| 停止所有服務（保留資料） | `docker compose down` |
+| 安裝新套件後重新建置 | `docker compose up -d --build -V` |
+| 清空資料庫重新開始（**會刪除所有資料**） | `docker compose down -v`，再重新執行上面第 2、3 步 |
+
+> **Windows 注意事項**：專案放在 Windows 資料夾時，檔案變更通知可能傳不進容器，後端改完程式不會自動重新啟動，請手動執行 `docker compose restart api`。前端已設定輪詢偵測，不受影響。
+
+### 用資料庫工具連線
+
+DBeaver 等工具選 MariaDB，連 `localhost:3308`，資料庫、帳號、密碼為 `.env` 裡的 `DB_NAME`、`DB_USER`、`DB_PASSWORD`。

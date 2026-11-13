@@ -1,32 +1,28 @@
-<!-- 一張卡片：平常顯示標題與說明，按「編輯」後直接在卡片上變成輸入框 -->
+<!-- 一張卡片：平常顯示標題與說明，按「編輯」後直接在卡片上變成輸入框。
+     最外層一定要是同一個元素：拖拉套件靠它認出是哪一張卡片，換掉的話編輯完就拖不動 -->
 <template>
-  <form v-if="editing" class="card editing" novalidate @submit.prevent="submit" @keydown.esc="cancel">
-    <input
-      ref="titleInput"
-      v-model="title"
-      class="field"
-      type="text"
-      maxlength="255"
-      aria-label="標題"
-    />
-    <span v-if="errors.title" class="error">{{ errors.title[0] }}</span>
-    <textarea v-model="description" class="field" aria-label="說明" placeholder="說明（選填）" />
-    <span v-if="errors.description" class="error">{{ errors.description[0] }}</span>
-    <p v-if="error" class="error">{{ error }}</p>
-    <div class="row">
-      <button type="submit" class="btn" :disabled="saving">{{ saving ? '儲存中…' : '儲存' }}</button>
-      <button type="button" class="btn ghost" :disabled="saving" @click="cancel">取消</button>
-    </div>
-  </form>
+  <div class="card" :class="{ editing }">
+    <form v-if="editing" class="edit-form" novalidate @submit.prevent="submit" @keydown.esc="cancel">
+      <input ref="titleInput" v-model="title" class="field" type="text" maxlength="255" aria-label="標題" />
+      <span v-if="errors.title" class="error">{{ errors.title[0] }}</span>
+      <textarea v-model="description" class="field" aria-label="說明" placeholder="說明（選填）" />
+      <span v-if="errors.description" class="error">{{ errors.description[0] }}</span>
+      <p v-if="error" class="error">{{ error }}</p>
+      <div class="row">
+        <button type="submit" class="btn" :disabled="saving">{{ saving ? '儲存中…' : '儲存' }}</button>
+        <button type="button" class="btn ghost" :disabled="saving" @click="cancel">取消</button>
+      </div>
+    </form>
 
-  <article v-else class="card">
-    <h3>{{ card.title }}</h3>
-    <p v-if="card.description">{{ card.description }}</p>
-    <div class="card-actions">
-      <button type="button" @click="startEdit">編輯</button>
-      <button type="button" class="del" @click="emit('delete')">刪除</button>
-    </div>
-  </article>
+    <template v-else>
+      <h3>{{ card.title }}</h3>
+      <p v-if="card.description">{{ card.description }}</p>
+      <div class="card-actions">
+        <button type="button" @click="startEdit">編輯</button>
+        <button type="button" class="del" @click="emit('delete')">刪除</button>
+      </div>
+    </template>
+  </div>
 </template>
 
 <script setup>
@@ -95,7 +91,8 @@ async function submit() {
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 .card:hover { box-shadow: var(--shadow); border-color: var(--line-strong); }
-.card.editing { cursor: default; gap: 8px; box-shadow: var(--shadow); }
+.card.editing { cursor: default; box-shadow: var(--shadow); }
+.edit-form { display: flex; flex-direction: column; gap: 8px; }
 h3 { margin: 0; font-size: 15px; font-weight: 500; color: var(--heading); overflow-wrap: anywhere; }
 p { margin: 0; font-size: 13px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 .card-actions { display: flex; gap: 14px; margin-top: 6px; font-size: 13px; }
