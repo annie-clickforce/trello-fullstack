@@ -57,5 +57,5 @@ svg { margin-bottom: 8px; }
 .mark circle { fill: var(--surface); stroke: var(--dot, var(--faint)); stroke-width: 1.5; }
 .mark line, .mark polyline { fill: none; stroke: var(--dot, var(--faint)); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .title { margin: 0; font-size: 14px; color: var(--fg); }
-.hint { margin: 0; font-size: 13px; color: var(--faint); }
+.hint { margin: 0; font-size: 14px; color: var(--muted); }
 </style>

@@ -94,10 +94,10 @@ async function submit() {
 .card.editing { cursor: default; box-shadow: var(--shadow); }
 .edit-form { display: flex; flex-direction: column; gap: 8px; }
 h3 { margin: 0; font-size: 15px; font-weight: 500; color: var(--heading); overflow-wrap: anywhere; }
-p { margin: 0; font-size: 13px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-.card-actions { display: flex; gap: 14px; margin-top: 6px; font-size: 13px; }
+p { margin: 0; font-size: 14px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.card-actions { display: flex; gap: 14px; margin-top: 6px; font-size: 14px; }
 .card-actions button { border: 0; background: none; padding: 0; color: var(--link); }
 .card-actions button:hover { text-decoration: underline; }
-.card-actions .del { color: var(--faint); }
+.card-actions .del { color: var(--muted); }
 .card-actions .del:hover { color: var(--danger); }
 </style>

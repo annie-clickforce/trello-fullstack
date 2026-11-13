@@ -13,9 +13,9 @@
   --accent: #135b7c;
   --accent-hover: #0e4a66;
   --accent-fg: #ffffff;
-  --link: #2e90b7;
+  --link: #237ea4;
   --highlight: #f16c5d;
-  --danger: #f16c5d;
+  --danger: #c93a2b;
   --danger-fg: #ffffff;
   --drop: #e3f0f5;
   --backdrop: rgba(32, 32, 38, 0.45);
@@ -57,7 +57,7 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
 }
 
@@ -84,7 +84,7 @@ a:hover { text-decoration: underline; }
 }
 .field:hover { border-color: var(--faint); }
 .field:focus { outline: none; border-color: var(--accent); }
-.field::placeholder { color: var(--faint); }
+.field::placeholder { color: var(--muted); }
 textarea.field { resize: vertical; min-height: 64px; }
 
 /* 主要按鈕：實心深藍綠 */
@@ -94,7 +94,7 @@ textarea.field { resize: vertical; min-height: 64px; }
   color: var(--accent-fg);
   border-radius: 8px;
   padding: 6px 16px;
-  font-size: 14px;
+  font-size: 15px;
   transition: background 0.15s, border-color 0.15s;
 }
 .btn:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
@@ -113,5 +113,5 @@ textarea.field { resize: vertical; min-height: 64px; }
 .link-btn:hover { text-decoration: underline; }
 
 .row { display: flex; gap: 8px; }
-.error { color: var(--danger); font-size: 13px; margin: 0; }
+.error { color: var(--danger); font-size: 14px; margin: 0; }
 .muted { color: var(--muted); }

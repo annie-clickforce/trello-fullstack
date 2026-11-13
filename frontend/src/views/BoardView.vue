@@ -274,7 +274,7 @@ async function doLogout() {
 .greeting { margin: 0; font-size: 24px; font-weight: 500; color: var(--heading); }
 .detail { margin: 2px 0 0; color: var(--muted); }
 .progress { flex: 0 1 280px; min-width: 200px; }
-.progress-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; text-align: right; font-variant-numeric: tabular-nums; }
+.progress-label { font-size: 14px; color: var(--muted); margin-bottom: 6px; text-align: right; font-variant-numeric: tabular-nums; }
 .progress-label strong { color: var(--heading); font-weight: 600; }
 .progress-bar { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.3s; }
@@ -296,7 +296,7 @@ async function doLogout() {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   flex: 1 1 220px;
   min-width: 0;
@@ -332,7 +332,7 @@ async function doLogout() {
 .column[aria-label="待辦"] { --dot: var(--highlight); }
 .column[aria-label="進行中"] { --dot: var(--accent); }
 .column[aria-label="完成"] { --dot: var(--faint); }
-.count { font-size: 13px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.count { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .cards {
   display: flex;
